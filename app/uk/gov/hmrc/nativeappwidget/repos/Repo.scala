@@ -14,18 +14,23 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.nativeappwidget.controllers
+package uk.gov.hmrc.nativeappwidget.repos
 
-import uk.gov.hmrc.play.microservice.controller.BaseController
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
-import play.api.mvc._
+
+import com.google.inject.ImplementedBy
+import uk.gov.hmrc.nativeappwidget.models.Data
+
 import scala.concurrent.Future
 
-object MicroserviceHelloWorld extends MicroserviceHelloWorld
+@ImplementedBy(classOf[MongoRepo])
+trait Repo {
 
-trait MicroserviceHelloWorld extends BaseController {
+  /**
+    * Insert data into the repo - return a `Left` if there is an error while inserting,
+    * otherwise return `Unit`
+    *
+    * @param data The data to insert
+    */
+  def insertData(data: Data): Future[Either[String,Unit]]
 
-	def hello() = Action.async { implicit request =>
-		Future.successful(Ok("Hello world"))
-	}
 }

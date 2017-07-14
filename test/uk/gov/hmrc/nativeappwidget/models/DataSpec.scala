@@ -14,18 +14,21 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.nativeappwidget.controllers
+package uk.gov.hmrc.nativeappwidget.models
 
-import uk.gov.hmrc.play.microservice.controller.BaseController
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
-import play.api.mvc._
-import scala.concurrent.Future
+import org.scalatest.{Matchers, WordSpec}
+import play.api.libs.json.{JsSuccess, Json}
 
-object MicroserviceHelloWorld extends MicroserviceHelloWorld
 
-trait MicroserviceHelloWorld extends BaseController {
+class DataSpec extends WordSpec with Matchers {
 
-	def hello() = Action.async { implicit request =>
-		Future.successful(Ok("Hello world"))
-	}
+  "Data" must {
+
+    "have a JSON format instance" in {
+      val data = randomData()
+      Json.fromJson[Data](Json.toJson(data)) shouldBe JsSuccess(data)
+    }
+
+  }
+
 }

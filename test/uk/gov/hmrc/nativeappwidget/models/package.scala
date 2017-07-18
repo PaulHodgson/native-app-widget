@@ -17,7 +17,7 @@
 package uk.gov.hmrc.nativeappwidget
 
 import org.scalacheck.Gen
-import uk.gov.hmrc.nativeappwidget.models.Data.{Content, KeyValuePair}
+import uk.gov.hmrc.nativeappwidget.models.SurveyData.{Content, KeyValuePair}
 
 package object models {
 
@@ -34,13 +34,13 @@ package object models {
       content ← contentGen
     } yield KeyValuePair(key, content)
 
-  def dataGen: Gen[Data] =
+  def dataGen: Gen[SurveyData] =
     for {
       campaignId ← Gen.alphaNumStr
       internalAuthId ← Gen.alphaNumStr
       data ← Gen.listOf(keyValueGen)
-    } yield Data(campaignId, internalAuthId, data)
+    } yield SurveyData(campaignId, internalAuthId, data)
 
-  def randomData(): Data = dataGen.sample.getOrElse(sys.error("Could not generate data"))
+  def randomData(): SurveyData = dataGen.sample.getOrElse(sys.error("Could not generate data"))
 
 }

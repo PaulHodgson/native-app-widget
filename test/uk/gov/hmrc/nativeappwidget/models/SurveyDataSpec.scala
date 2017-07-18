@@ -14,23 +14,21 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.nativeappwidget.repos
+package uk.gov.hmrc.nativeappwidget.models
+
+import org.scalatest.{Matchers, WordSpec}
+import play.api.libs.json.{JsSuccess, Json}
 
 
-import com.google.inject.ImplementedBy
-import uk.gov.hmrc.nativeappwidget.models.Data
+class SurveyDataSpec extends WordSpec with Matchers {
 
-import scala.concurrent.Future
+  "Data" must {
 
-@ImplementedBy(classOf[MongoRepo])
-trait Repo {
+    "have a JSON format instance" in {
+      val data = randomData()
+      Json.fromJson[SurveyData](Json.toJson(data)) shouldBe JsSuccess(data)
+    }
 
-  /**
-    * Insert data into the repo - return a `Left` if there is an error while inserting,
-    * otherwise return `Unit`
-    *
-    * @param data The data to insert
-    */
-  def insertData(data: Data): Future[Either[String,Unit]]
+  }
 
 }

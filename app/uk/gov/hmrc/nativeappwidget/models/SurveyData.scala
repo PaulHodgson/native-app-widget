@@ -17,7 +17,7 @@
 package uk.gov.hmrc.nativeappwidget.models
 
 import play.api.libs.json.{Format, Json}
-import uk.gov.hmrc.nativeappwidget.models.Data.KeyValuePair
+import uk.gov.hmrc.nativeappwidget.models.SurveyData.KeyValuePair
 
 /**
   * Represents data we write to our repo
@@ -26,12 +26,15 @@ import uk.gov.hmrc.nativeappwidget.models.Data.KeyValuePair
   * @param internalAuthid - the internal auth ID identifying a person
   * @param data - the actual data
   */
-case class Data(campaignId: String,
-                internalAuthid: String,
-                data : List[KeyValuePair]
-               )
+case class SurveyData(campaignId: String,
+                      internalAuthid: String,
+                      data : List[KeyValuePair]) {
 
-object Data {
+  /** A string suitable for identifying the data in logs */
+  val idString: String = s"campaignId: '$campaignId', internalAuthId: '$internalAuthid'"
+}
+
+object SurveyData {
 
   case class KeyValuePair(key: String, value: Content)
 
@@ -46,6 +49,6 @@ object Data {
 
   }
 
-  implicit val dataFormat: Format[Data] = Json.format[Data]
+  implicit val dataFormat: Format[SurveyData] = Json.format[SurveyData]
 
 }

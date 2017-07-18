@@ -16,19 +16,4 @@
 
 package uk.gov.hmrc.nativeappwidget.models
 
-import org.scalatest.{Matchers, WordSpec}
-import play.api.libs.json.{JsSuccess, Json}
-
-
-class DataSpec extends WordSpec with Matchers {
-
-  "Data" must {
-
-    "have a JSON format instance" in {
-      val data = randomData()
-      Json.fromJson[Data](Json.toJson(data)) shouldBe JsSuccess(data)
-    }
-
-  }
-
-}
+case class DataPersisted()

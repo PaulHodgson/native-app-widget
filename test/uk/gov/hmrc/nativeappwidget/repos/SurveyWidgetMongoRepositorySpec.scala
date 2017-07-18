@@ -23,14 +23,14 @@ import reactivemongo.api.DefaultDB
 import reactivemongo.api.commands.{DefaultWriteResult, WriteError, WriteResult}
 import reactivemongo.api.indexes.Index
 import uk.gov.hmrc.mongo.MongoConnector
-import uk.gov.hmrc.nativeappwidget.models.{Data, randomData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 
-class MongoRepoSpec extends WordSpec with Matchers with MockFactory {
+class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFactory {
 
   trait MockDBFunctions {
     def insert[A, B](a: A): Future[B]
@@ -40,8 +40,8 @@ class MongoRepoSpec extends WordSpec with Matchers with MockFactory {
 
   val mockMongo: ReactiveMongoComponent = mock[ReactiveMongoComponent]
 
-  val store: MongoRepo = {
-    // when we start MongoRepo there will some calls made by the ReactiveRepository
+  val store: SurveyWidgetMongoRepository = {
+    // when we start SurveyWidgetMongoRepository there will some calls made by the ReactiveRepository
     // class it extends which we can't control - but we don't care about those calls.
     // Deal with them in the lines below
     val connector = mock[MongoConnector]
@@ -49,31 +49,31 @@ class MongoRepoSpec extends WordSpec with Matchers with MockFactory {
     (mockMongo.mongoConnector _).expects().returning(connector)
     (connector.db _).expects().returning(() ⇒ db)
 
-    new MongoRepo(mockMongo) {
+    new SurveyWidgetMongoRepository(mockMongo) {
 
       override def indexes: Seq[Index] = Seq.empty[Index]
 
-      override def insert(entity: Data
+      override def insert(entity: SurveyData
                          )(implicit ec: ExecutionContext): Future[WriteResult] =
-        mockDBFunctions.insert[Data, WriteResult](entity)
+        mockDBFunctions.insert[SurveyData, WriteResult](entity)
 
     }
   }
 
-  def mockInsert(data: Data)(result: ⇒ Future[WriteResult]): Unit =
-    (mockDBFunctions.insert[Data, WriteResult](_: Data))
+  def mockInsert(data: SurveyData)(result: ⇒ Future[WriteResult]): Unit =
+    (mockDBFunctions.insert[SurveyData, WriteResult](_: SurveyData))
       .expects(data)
       .returning(result)
 
 
-  "The MongoRepo" when {
+  "The SurveyWidgetMongoRepository" when {
 
     val data = randomData()
 
     "putting" must {
 
-      def put(data: Data): Either[String, Unit] =
-        Await.result(store.insertData(data), 5.seconds)
+      def put(data: SurveyData): Either[String, DataPersisted] =
+        Await.result(store.persistData(data), 5.seconds)
 
       val successfulWriteResult = DefaultWriteResult(true, 0, Seq.empty[WriteError], None, None, None)
 
@@ -88,7 +88,7 @@ class MongoRepoSpec extends WordSpec with Matchers with MockFactory {
       "return successfully if the write was successful" in {
         mockInsert(data)(Future.successful(successfulWriteResult))
 
-        put(data) shouldBe Right(())
+        put(data) shouldBe Right(DataPersisted())
       }
 
       "return an error" when {

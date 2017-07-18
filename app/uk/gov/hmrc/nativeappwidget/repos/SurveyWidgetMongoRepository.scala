@@ -16,24 +16,38 @@
 
 package uk.gov.hmrc.nativeappwidget.repos
 
-import com.google.inject.{Inject, Singleton}
+import com.google.inject.{ImplementedBy, Inject, Singleton}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
-import uk.gov.hmrc.nativeappwidget.models.Data
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData}
 
 import scala.concurrent.{ExecutionContext, Future}
 
+@ImplementedBy(classOf[SurveyWidgetMongoRepository])
+trait SurveyWidgetRepository {
+
+  /**
+    * Insert data into the repo - return a `Left` if there is an error while inserting,
+    * otherwise return a `DataPersisted()`
+    *
+    * @param data The data to insert
+    */
+  def persistData(data: SurveyData): Future[Either[String,DataPersisted]]
+
+}
+
+
 @Singleton
-class MongoRepo @Inject()(mongo: ReactiveMongoComponent)(implicit ec: ExecutionContext)
-  extends ReactiveRepository[Data, BSONObjectID] (
+class SurveyWidgetMongoRepository @Inject()(mongo: ReactiveMongoComponent)(implicit ec: ExecutionContext)
+  extends ReactiveRepository[SurveyData, BSONObjectID] (
     collectionName = "survey-widgets",
     mongo = mongo.mongoConnector.db,
-    Data.dataFormat,
+    SurveyData.dataFormat,
     ReactiveMongoFormats.objectIdFormats)
-    with Repo {
+    with SurveyWidgetRepository {
 
   override def indexes: Seq[Index] = Seq(
     Index(
@@ -46,19 +60,19 @@ class MongoRepo @Inject()(mongo: ReactiveMongoComponent)(implicit ec: ExecutionC
     )
   )
 
-  override def insertData(data: Data): Future[Either[String, Unit]] = {
-    logger.info(s"Putting data for ${data.campaignId} into data store")
-    insert(data).map[Either[String,Unit]]{ result ⇒
+  override def persistData(data: SurveyData): Future[Either[String, DataPersisted]] = {
+    logger.info(s"Persisting data into data store (${data.idString})")
+    insert(data).map[Either[String,DataPersisted]]{ result ⇒
       if (!result.ok) {
-        Left(s"Failed to write to enrolments store: ${result.errmsg.getOrElse("-")}. " +
+        Left(s"Failed to write to data store: ${result.errmsg.getOrElse("-")}. " +
           s"Write errors were ${result.writeErrors.map(_.errmsg).mkString(",")}")
       } else {
-        logger.info("Successfully wrote to enrolment store")
-        Right(())
+        logger.info(s"Successfully wrote to data store (${data.idString})")
+        Right(DataPersisted())
       }
     }.recover{ case e ⇒
-      logger.error(s"Could not write to enrolment store", e)
-      Left(s"Failed to write to enrolments store: ${e.getMessage}")
+      logger.error(s"Could not write to data store (${data.idString})", e)
+      Left(s"Failed to write to data store: ${e.getMessage}")
     }
   }
 

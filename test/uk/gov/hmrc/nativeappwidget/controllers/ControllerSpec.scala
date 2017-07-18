@@ -27,7 +27,7 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import uk.gov.hmrc.nativeappwidget.controllers.ControllerSpec.UnsupportedData
 import uk.gov.hmrc.nativeappwidget.models.{Data, randomData}
-import uk.gov.hmrc.nativeappwidget.repos.Repo
+import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
@@ -38,14 +38,14 @@ class ControllerSpec extends WordSpec with Matchers with MockFactory with Before
   implicit val system = ActorSystem("test-system")
   implicit val materializer = ActorMaterializer()
 
-  val mockRepo: Repo = mock[Repo]
+  val mockRepo: SurveyWidgetRepository = mock[SurveyWidgetRepository]
 
   def mockInsert(expectedData: Data)(result: Either[String,Unit]): Unit =
     (mockRepo.insertData(_: Data))
       .expects(expectedData)
       .returning(Future.successful(result))
 
-  val controller: Controller = new Controller(mockRepo)
+  val controller: WidgetDataController = new WidgetDataController(mockRepo)
 
 
   "The controller" when {

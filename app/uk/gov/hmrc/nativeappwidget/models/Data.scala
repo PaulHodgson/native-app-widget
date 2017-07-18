@@ -28,8 +28,7 @@ import uk.gov.hmrc.nativeappwidget.models.Data.KeyValuePair
   */
 case class Data(campaignId: String,
                 internalAuthid: String,
-                data : List[KeyValuePair]
-               )
+                data : List[KeyValuePair])
 
 object Data {
 

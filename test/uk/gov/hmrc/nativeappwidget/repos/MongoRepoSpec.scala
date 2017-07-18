@@ -40,8 +40,8 @@ class MongoRepoSpec extends WordSpec with Matchers with MockFactory {
 
   val mockMongo: ReactiveMongoComponent = mock[ReactiveMongoComponent]
 
-  val store: MongoRepo = {
-    // when we start MongoRepo there will some calls made by the ReactiveRepository
+  val store: SurveyWidgetMongoRepository = {
+    // when we start SurveyWidgetMongoRepository there will some calls made by the ReactiveRepository
     // class it extends which we can't control - but we don't care about those calls.
     // Deal with them in the lines below
     val connector = mock[MongoConnector]
@@ -49,7 +49,7 @@ class MongoRepoSpec extends WordSpec with Matchers with MockFactory {
     (mockMongo.mongoConnector _).expects().returning(connector)
     (connector.db _).expects().returning(() ⇒ db)
 
-    new MongoRepo(mockMongo) {
+    new SurveyWidgetMongoRepository(mockMongo) {
 
       override def indexes: Seq[Index] = Seq.empty[Index]
 
@@ -66,7 +66,7 @@ class MongoRepoSpec extends WordSpec with Matchers with MockFactory {
       .returning(result)
 
 
-  "The MongoRepo" when {
+  "The SurveyWidgetMongoRepository" when {
 
     val data = randomData()
 

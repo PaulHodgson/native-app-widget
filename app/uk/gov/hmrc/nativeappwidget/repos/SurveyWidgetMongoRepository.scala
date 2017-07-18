@@ -27,13 +27,12 @@ import uk.gov.hmrc.nativeappwidget.models.Data
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class MongoRepo @Inject()(mongo: ReactiveMongoComponent)(implicit ec: ExecutionContext)
-  extends ReactiveRepository[Data, BSONObjectID] (
+class SurveyWidgetMongoRepository @Inject()(mongo: ReactiveMongoComponent)(implicit ec: ExecutionContext) extends ReactiveRepository[Data, BSONObjectID] (
     collectionName = "survey-widgets",
     mongo = mongo.mongoConnector.db,
     Data.dataFormat,
     ReactiveMongoFormats.objectIdFormats)
-    with Repo {
+    with SurveyWidgetRepository {
 
   override def indexes: Seq[Index] = Seq(
     Index(
@@ -50,15 +49,15 @@ class MongoRepo @Inject()(mongo: ReactiveMongoComponent)(implicit ec: ExecutionC
     logger.info(s"Putting data for ${data.campaignId} into data store")
     insert(data).map[Either[String,Unit]]{ result ⇒
       if (!result.ok) {
-        Left(s"Failed to write to enrolments store: ${result.errmsg.getOrElse("-")}. " +
+        Left(s"Failed to write to data store: ${result.errmsg.getOrElse("-")}. " +
           s"Write errors were ${result.writeErrors.map(_.errmsg).mkString(",")}")
       } else {
-        logger.info("Successfully wrote to enrolment store")
+        logger.info("Successfully wrote to data store")
         Right(())
       }
     }.recover{ case e ⇒
-      logger.error(s"Could not write to enrolment store", e)
-      Left(s"Failed to write to enrolments store: ${e.getMessage}")
+      logger.error(s"Could not write to data store", e)
+      Left(s"Failed to write to data store: ${e.getMessage}")
     }
   }
 

@@ -16,16 +16,7 @@
 
 package uk.gov.hmrc.nativeappwidget.controllers
 
-import uk.gov.hmrc.play.microservice.controller.BaseController
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
-import play.api.mvc._
-import scala.concurrent.Future
+import uk.gov.hmrc.play.microservice.bootstrap.ErrorResponse
 
-object MicroserviceHelloWorld extends MicroserviceHelloWorld
-
-trait MicroserviceHelloWorld extends BaseController {
-
-	def hello() = Action.async { implicit request =>
-		Future.successful(Ok("Hello world"))
-	}
-}
+case object ErrorBadRequest extends ErrorResponse(400, "BAD_REQUEST")
+case object ErrorInternalServerError extends ErrorResponse(500, "INTERNAL_SERVER_ERROR")

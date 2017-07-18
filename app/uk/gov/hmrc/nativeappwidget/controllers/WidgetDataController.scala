@@ -17,32 +17,43 @@
 package uk.gov.hmrc.nativeappwidget.controllers
 
 import com.google.inject.{Inject, Singleton}
-import play.api.Logger
-import play.api.libs.json.JsError
+import play.api.libs.json.{JsError, Json}
 import play.api.mvc._
-import uk.gov.hmrc.nativeappwidget.models.Data
-import uk.gov.hmrc.nativeappwidget.repos.Repo
+import play.api.{Logger, mvc}
+import uk.gov.hmrc.nativeappwidget.services.WidgetDataService
+import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.{ExecutionContext, Future}
 
+class BadRequestException(message:String) extends uk.gov.hmrc.play.http.HttpException(message, 400)
+
+trait ErrorHandling {
+  self: BaseController =>
+  def log(message:String) = Logger.info(s"$message")
+
+  def errorWrapper(func: => Future[mvc.Result])(implicit hc: HeaderCarrier) = {
+    func.recover {
+      case ex:BadRequestException =>
+        log("BadRequest!")
+        Status(ErrorBadRequest.statusCode)(Json.toJson(ErrorBadRequest))
+      case e: Exception =>
+        Logger.error(s"Internal server error: ${e.getMessage}", e)
+        Status(ErrorInternalServerError.statusCode)(Json.toJson(ErrorInternalServerError))
+  }
+}
 
 @Singleton
-class Controller @Inject()(repo: Repo)(implicit ec: ExecutionContext) extends BaseController {
+class WidgetDataController @Inject()(service: WidgetDataService)(implicit ec: ExecutionContext) extends BaseController with ErrorHandling {
 
   val logger = Logger(this.getClass)
 
-  def insert: Action[AnyContent] = Action.async { implicit request ⇒
-    request.body.asJson.fold(
-      Future.successful(BadRequest("Expected JSON in body"))
-    ){
-      _.validate[Data].fold(
-        { e ⇒
-          logger.error(s"Could not parse JSON from request: ${prettyPrint(JsError(e))}")
-          Future.successful(BadRequest("Could not parse JSON"))
-        },
-        repo.insertData(_).map(handleRepoInsertResult)
-      )
+  def addWidgetData: Action[AnyContent] = Action.async { implicit request ⇒
+    errorWrapper {
+      request.body.asJson.fold(Future.successful(BadRequest("Expected JSON in body"))){
+        service.addWidgetData(_)
+        ???
+      }
     }
   }
 
@@ -59,4 +70,7 @@ class Controller @Inject()(repo: Repo)(implicit ec: ExecutionContext) extends Ba
     jsPath.toString + ": [" + validationErrors.map(_.message).mkString(",") + "]"
   }.mkString("; ")
 
+
 }
+
+

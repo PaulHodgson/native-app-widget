@@ -22,8 +22,8 @@ import uk.gov.hmrc.nativeappwidget.models.Data
 
 import scala.concurrent.Future
 
-@ImplementedBy(classOf[MongoRepo])
-trait Repo {
+@ImplementedBy(classOf[SurveyWidgetMongoRepository])
+trait SurveyWidgetRepository {
 
   /**
     * Insert data into the repo - return a `Left` if there is an error while inserting,

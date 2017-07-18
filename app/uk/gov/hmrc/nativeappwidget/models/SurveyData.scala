@@ -23,20 +23,18 @@ import uk.gov.hmrc.nativeappwidget.models.SurveyData.KeyValuePair
   * Represents data we write to our repo
   *
   * @param campaignId - an ID which associates the data to a particular party
-  * @param internalAuthid - the internal auth ID identifying a person
   * @param data - the actual data
   */
 case class SurveyData(campaignId: String,
-                      internalAuthid: String,
                       data : List[KeyValuePair]) {
 
   /** A string suitable for identifying the data in logs */
-  val idString: String = s"campaignId: '$campaignId', internalAuthId: '$internalAuthid'"
+  val idString: String = s"campaignId: '$campaignId'"
 }
 
 object SurveyData {
 
-  case class KeyValuePair(key: String, value: Content)
+  case class KeyValuePair(key: String, additionalInfo: Option[String], value: Content)
 
   case class Content(content: String, contentType: Option[String])
 

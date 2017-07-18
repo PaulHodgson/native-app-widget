@@ -50,12 +50,13 @@ class SurveyWidgetDataService @Inject()(repo: SurveyWidgetRepository,
                                         configuration: Configuration
                                        )(implicit ec: ExecutionContext) extends SurveyWidgetDataServiceAPI {
 
+  val internalAuthId = "ADD THIS"
   val whitelistedSurveys: Set[String] =
     configuration.underlying.getStringList("widget.surveys").asScala.toSet
 
   def addWidgetData(data: SurveyData): Future[Either[SurveyWidgetError, DataPersisted]] =
     if(whitelistedSurveys.contains(data.campaignId)) {
-      repo.persistData(data).map(_.leftMap(RepoError))
+      repo.persistData(data, internalAuthId).map(_.leftMap(RepoError))
     } else {
       Future.successful(Left(Unauthorised))
     }

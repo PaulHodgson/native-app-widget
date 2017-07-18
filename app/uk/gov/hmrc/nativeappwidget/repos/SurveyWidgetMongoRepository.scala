@@ -35,7 +35,7 @@ trait SurveyWidgetRepository {
     *
     * @param data The data to insert
     */
-  def persistData(data: SurveyData): Future[Either[String,DataPersisted]]
+  def persistData(data: SurveyData, internalAuthId: String): Future[Either[String,DataPersisted]]
 
 }
 
@@ -60,7 +60,7 @@ class SurveyWidgetMongoRepository @Inject()(mongo: ReactiveMongoComponent)(impli
     )
   )
 
-  override def persistData(data: SurveyData): Future[Either[String, DataPersisted]] = {
+  override def persistData(data: SurveyData, internalAuthId: String): Future[Either[String, DataPersisted]] = {
     logger.info(s"Persisting data into data store (${data.idString})")
     insert(data).map[Either[String,DataPersisted]]{ result ⇒
       if (!result.ok) {

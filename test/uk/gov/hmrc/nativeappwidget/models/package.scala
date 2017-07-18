@@ -31,8 +31,9 @@ package object models {
   def keyValueGen: Gen[KeyValuePair] =
     for {
       key ← Gen.alphaNumStr
+      additionalInfo ← Gen.option(Gen.alphaNumStr)
       content ← contentGen
-    } yield KeyValuePair(key, content)
+    } yield KeyValuePair(key, additionalInfo, content)
 
   def dataGen: Gen[SurveyData] =
     for {

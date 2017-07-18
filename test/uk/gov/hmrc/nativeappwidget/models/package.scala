@@ -38,9 +38,8 @@ package object models {
   def dataGen: Gen[SurveyData] =
     for {
       campaignId ← Gen.alphaNumStr
-      internalAuthId ← Gen.alphaNumStr
       data ← Gen.listOf(keyValueGen)
-    } yield SurveyData(campaignId, internalAuthId, data)
+    } yield SurveyData(campaignId, data)
 
   def randomData(): SurveyData = dataGen.sample.getOrElse(sys.error("Could not generate data"))
 

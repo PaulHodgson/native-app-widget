@@ -73,7 +73,7 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
     "putting" must {
 
       def put(data: SurveyData): Either[String, DataPersisted] =
-        Await.result(store.persistData(data), 5.seconds)
+        Await.result(store.persistData(data, "someInternalAuthId"), 5.seconds)
 
       val successfulWriteResult = DefaultWriteResult(true, 0, Seq.empty[WriteError], None, None, None)
 

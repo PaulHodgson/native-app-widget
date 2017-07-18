@@ -22,6 +22,8 @@ import play.api.data.validation.ValidationError
 import play.api.libs.json.JsPath
 import play.api.mvc._
 import play.api.Logger
+import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
+import uk.gov.hmrc.nativeappwidget.MicroserviceAuthConnector
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
@@ -31,7 +33,7 @@ import uk.gov.hmrc.play.microservice.controller.BaseController
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI)(implicit ec: ExecutionContext) extends BaseController {
+class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI)(implicit ec: ExecutionContext) extends BaseController with AuthorisedFunctions {
 
   val logger = Logger(this.getClass)
 
@@ -79,4 +81,5 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI)(
     jsPath.toString + ": [" + validationErrors.map(_.message).mkString(",") + "]"
   }.mkString("; ")
 
+  override def authConnector: AuthConnector = MicroserviceAuthConnector
 }

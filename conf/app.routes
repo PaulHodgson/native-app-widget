@@ -1,1 +1,1 @@
-POST    /widget-data    @uk.gov.hmrc.nativeappwidget.controllers.WidgetDataController.addWidgetData
+POST    /widget-data    @uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.addWidgetData

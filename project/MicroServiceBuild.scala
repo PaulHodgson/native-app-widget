@@ -1,15 +1,14 @@
-import sbt._
-import play.sbt.PlayImport._
 import play.core.PlayVersion
-import uk.gov.hmrc.SbtAutoBuildPlugin
-import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin
-import uk.gov.hmrc.versioning.SbtGitVersioning
+import play.sbt.PlayImport._
+import play.sbt.routes.RoutesKeys.routesImport
+import sbt._
 
 object MicroServiceBuild extends Build with MicroService {
 
   val appName = "native-app-widget"
 
   override lazy val appDependencies: Seq[ModuleID] = compile ++ test()
+  override lazy val playSettings : Seq[Setting[_]] = Seq(routesImport ++= Seq("uk.gov.hmrc.domain._", "uk.gov.hmrc.nativeappwidget.binders.Binders._"))
 
   val compile = Seq(
     "uk.gov.hmrc" %% "play-reactivemongo" % "5.2.0",

@@ -19,10 +19,11 @@ package uk.gov.hmrc.nativeappwidget.services
 import cats.syntax.either._
 import com.google.inject.{ImplementedBy, Inject, Singleton}
 import play.api.Configuration
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, SurveyDataPersist}
 import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
+import uk.gov.hmrc.time.DateTimeUtils
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,7 +31,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @ImplementedBy(classOf[SurveyWidgetDataService])
 trait SurveyWidgetDataServiceAPI {
 
-  def addWidgetData(data: SurveyData): Future[Either[SurveyWidgetError, DataPersisted]]
+  def addWidgetData(data: SurveyData, internalAuthId: String): Future[Either[SurveyWidgetError, DataPersisted]]
 
 }
 
@@ -50,13 +51,12 @@ class SurveyWidgetDataService @Inject()(repo: SurveyWidgetRepository,
                                         configuration: Configuration
                                        )(implicit ec: ExecutionContext) extends SurveyWidgetDataServiceAPI {
 
-  val internalAuthId = "ADD THIS"
   val whitelistedSurveys: Set[String] =
     configuration.underlying.getStringList("widget.surveys").asScala.toSet
 
-  def addWidgetData(data: SurveyData): Future[Either[SurveyWidgetError, DataPersisted]] =
+  def addWidgetData(data: SurveyData, internalAuthId: String): Future[Either[SurveyWidgetError, DataPersisted]] =
     if(whitelistedSurveys.contains(data.campaignId)) {
-      repo.persistData(data, internalAuthId).map(_.leftMap(RepoError))
+      repo.persistData(SurveyDataPersist(data.campaignId, internalAuthId, data.surveyData, DateTimeUtils.now)).map(_.leftMap(RepoError))
     } else {
       Future.successful(Left(Unauthorised))
     }

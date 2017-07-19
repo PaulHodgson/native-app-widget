@@ -1,1 +1,1 @@
-POST    /widget-data    @uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.addWidgetData
+POST    /:nino/widget-data  @uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.addWidgetData(nino: uk.gov.hmrc.domain.Nino)

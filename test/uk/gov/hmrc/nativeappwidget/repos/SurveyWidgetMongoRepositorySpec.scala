@@ -23,7 +23,7 @@ import reactivemongo.api.DefaultDB
 import reactivemongo.api.commands.{DefaultWriteResult, WriteError, WriteResult}
 import reactivemongo.api.indexes.Index
 import uk.gov.hmrc.mongo.MongoConnector
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyDataPersist, randomDataPersist}
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -53,27 +53,26 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
 
       override def indexes: Seq[Index] = Seq.empty[Index]
 
-      override def insert(entity: SurveyData
-                         )(implicit ec: ExecutionContext): Future[WriteResult] =
-        mockDBFunctions.insert[SurveyData, WriteResult](entity)
+      override def insert(entity: SurveyDataPersist)(implicit ec: ExecutionContext): Future[WriteResult] =
+        mockDBFunctions.insert[SurveyDataPersist, WriteResult](entity)
 
     }
   }
 
-  def mockInsert(data: SurveyData)(result: ⇒ Future[WriteResult]): Unit =
-    (mockDBFunctions.insert[SurveyData, WriteResult](_: SurveyData))
+  def mockInsert(data: SurveyDataPersist)(result: ⇒ Future[WriteResult]): Unit =
+    (mockDBFunctions.insert[SurveyDataPersist, WriteResult](_: SurveyDataPersist))
       .expects(data)
       .returning(result)
 
 
   "The SurveyWidgetMongoRepository" when {
 
-    val data = randomData()
+    val data = randomDataPersist()
 
     "putting" must {
 
-      def put(data: SurveyData): Either[String, DataPersisted] =
-        Await.result(store.persistData(data, "someInternalAuthId"), 5.seconds)
+      def put(data: SurveyDataPersist): Either[String, DataPersisted] =
+        Await.result(store.persistData(data), 5.seconds)
 
       val successfulWriteResult = DefaultWriteResult(true, 0, Seq.empty[WriteError], None, None, None)
 

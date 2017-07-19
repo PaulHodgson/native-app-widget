@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.nativeappwidget
 
+import com.google.inject.Singleton
 import uk.gov.hmrc.auth.core.PlayAuthConnector
 import uk.gov.hmrc.play.audit.http.config.LoadAuditingConfig
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
@@ -32,7 +33,8 @@ object MicroserviceAuditConnector extends AuditConnector with RunMode {
   override lazy val auditingConfig = LoadAuditingConfig(s"auditing")
 }
 
-object MicroserviceAuthConnector extends PlayAuthConnector with ServicesConfig {
+@Singleton
+class MicroserviceAuthConnector extends PlayAuthConnector with ServicesConfig {
   override val serviceUrl: String = baseUrl("auth")
 
   override def http: HttpPost = WSHttp

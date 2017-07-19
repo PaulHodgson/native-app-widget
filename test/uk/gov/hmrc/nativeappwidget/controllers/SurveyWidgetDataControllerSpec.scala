@@ -19,24 +19,25 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
-import play.api.Configuration
 import play.api.libs.json.{Format, Json}
 import play.api.mvc.{AnyContent, AnyContentAsText, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
+import uk.gov.hmrc.auth.core.AuthConnector
+import uk.gov.hmrc.domain.Nino
+import uk.gov.hmrc.nativeappwidget.MicroserviceAuthConnector
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
-import uk.gov.hmrc.nativeappwidget.services.{SurveyWidgetDataService, SurveyWidgetDataServiceAPI}
+import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFactory with BeforeAndAfterAll with GeneratorDrivenPropertyChecks {
 
@@ -44,34 +45,37 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
   implicit val materializer = ActorMaterializer()
 
   val mockSurveyWidgetDataServiceAPI: SurveyWidgetDataServiceAPI = mock[SurveyWidgetDataServiceAPI]
+  val mockAuthConnector: MicroserviceAuthConnector = mock[MicroserviceAuthConnector]
 
-  def mockInsert(expectedData: SurveyData)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
-    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData))
-      .expects(expectedData)
+  def mockInsert(expectedData: SurveyData, internalAuthId: String)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
+    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData, _: String))
+      .expects(expectedData, internalAuthId)
       .returning(Future.successful(result))
 
   val surveyWhitelist = Set("a", "b")
 
 
-  val controller: SurveyWidgetDataController = new SurveyWidgetDataController(mockSurveyWidgetDataServiceAPI)
+  val controller: SurveyWidgetDataController = new SurveyWidgetDataController(mockSurveyWidgetDataServiceAPI, mockAuthConnector)
+
 
 
   "The controller" when {
 
     def doInsert(request: Request[AnyContent]): Future[Result] =
-      controller.addWidgetData.apply(request)
+      controller.addWidgetData(Nino("some-nino")).apply(request)
 
     val data = randomData().copy(campaignId = "a")
+    val internalAuthId = "some-internal-auth-id"
 
-    "handling requests to insert data" must {
+    "handling requests to insert surveyData" must {
 
-      "insert the data from the body of the request into the repo" in {
-        mockInsert(data)(Left(RepoError("Uh oh!")))
+      "insert the surveyData from the body of the request into the repo" in {
+        mockInsert(data, internalAuthId)(Left(RepoError("Uh oh!")))
         doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
       }
 
       "return an OK 200 if the insert was successful" in {
-        mockInsert(data)(Right(DataPersisted()))
+        mockInsert(data, internalAuthId)(Right(DataPersisted()))
 
         val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
         status(result) shouldBe OK
@@ -95,7 +99,7 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       "return an InternalServerError 500" when {
 
         "the insert into the repo was unsuccessful" in {
-          mockInsert(data)(Left(RepoError("Oh no!")))
+          mockInsert(data, internalAuthId)(Left(RepoError("Oh no!")))
           val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
           status(result) shouldBe INTERNAL_SERVER_ERROR
         }
@@ -104,7 +108,7 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       "return a Unauthorized 401" when {
 
         "the service indicates the campaign ID wasn't whitelisted" in {
-          mockInsert(data)(Left(Unauthorised))
+          mockInsert(data, internalAuthId)(Left(Unauthorised))
           val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
           status(result) shouldBe UNAUTHORIZED
 

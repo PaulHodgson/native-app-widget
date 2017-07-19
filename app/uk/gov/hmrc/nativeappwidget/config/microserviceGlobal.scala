@@ -46,7 +46,7 @@ object MicroserviceLoggingFilter extends LoggingFilter with MicroserviceFilterSu
 object MicroserviceAuthFilter extends AuthorisationFilter with MicroserviceFilterSupport {
   override def config: FilterConfig = FilterConfig(ControllerConfiguration.controllerConfigs)
 
-  override def connector: AuthConnector = MicroserviceAuthConnector
+  override def connector: AuthConnector = new MicroserviceAuthConnector
 }
 
 object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with MicroserviceFilterSupport {

@@ -22,7 +22,7 @@ import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyDataPersist}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -30,22 +30,22 @@ import scala.concurrent.{ExecutionContext, Future}
 trait SurveyWidgetRepository {
 
   /**
-    * Insert data into the repo - return a `Left` if there is an error while inserting,
+    * Insert surveyData into the repo - return a `Left` if there is an error while inserting,
     * otherwise return a `DataPersisted()`
     *
-    * @param data The data to insert
+    * @param data The surveyData to insert
     */
-  def persistData(data: SurveyData, internalAuthId: String): Future[Either[String,DataPersisted]]
+  def persistData(data: SurveyDataPersist): Future[Either[String,DataPersisted]]
 
 }
 
 
 @Singleton
 class SurveyWidgetMongoRepository @Inject()(mongo: ReactiveMongoComponent)(implicit ec: ExecutionContext)
-  extends ReactiveRepository[SurveyData, BSONObjectID] (
+  extends ReactiveRepository[SurveyDataPersist, BSONObjectID] (
     collectionName = "survey-widgets",
     mongo = mongo.mongoConnector.db,
-    SurveyData.dataFormat,
+    SurveyDataPersist.dataFormat,
     ReactiveMongoFormats.objectIdFormats)
     with SurveyWidgetRepository {
 
@@ -60,19 +60,19 @@ class SurveyWidgetMongoRepository @Inject()(mongo: ReactiveMongoComponent)(impli
     )
   )
 
-  override def persistData(data: SurveyData, internalAuthId: String): Future[Either[String, DataPersisted]] = {
-    logger.info(s"Persisting data into data store (${data.idString})")
+  override def persistData(data: SurveyDataPersist): Future[Either[String, DataPersisted]] = {
+    logger.info(s"Persisting surveyData into surveyData store (${data.idString})")
     insert(data).map[Either[String,DataPersisted]]{ result ⇒
       if (!result.ok) {
-        Left(s"Failed to write to data store: ${result.errmsg.getOrElse("-")}. " +
+        Left(s"Failed to write to surveyData store: ${result.errmsg.getOrElse("-")}. " +
           s"Write errors were ${result.writeErrors.map(_.errmsg).mkString(",")}")
       } else {
-        logger.info(s"Successfully wrote to data store (${data.idString})")
+        logger.info(s"Successfully wrote to surveyData store (${data.idString})")
         Right(DataPersisted())
       }
     }.recover{ case e ⇒
-      logger.error(s"Could not write to data store (${data.idString})", e)
-      Left(s"Failed to write to data store: ${e.getMessage}")
+      logger.error(s"Could not write to surveyData store (${data.idString})", e)
+      Left(s"Failed to write to surveyData store: ${e.getMessage}")
     }
   }
 

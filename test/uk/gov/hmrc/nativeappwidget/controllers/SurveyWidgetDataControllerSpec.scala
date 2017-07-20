@@ -19,14 +19,15 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.{Format, JsNull, Json}
 import play.api.mvc.{AnyContent, AnyContentAsText, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import uk.gov.hmrc.auth.core.AuthConnector
+import uk.gov.hmrc.auth.core.{AuthConnector, Predicate, Retrieval}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.nativeappwidget.MicroserviceAuthConnector
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
@@ -34,6 +35,7 @@ import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
+import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -43,13 +45,19 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
 
   implicit val system = ActorSystem("test-system")
   implicit val materializer = ActorMaterializer()
+  implicit val getNow = () => new DateTime(2002, 3, 3, 10, 30)
 
+  val internalAuthId = "some-internal-auth-id"
   val mockSurveyWidgetDataServiceAPI: SurveyWidgetDataServiceAPI = mock[SurveyWidgetDataServiceAPI]
-  val mockAuthConnector: MicroserviceAuthConnector = mock[MicroserviceAuthConnector]
+  val mockAuthConnector: AuthConnector = new AuthConnector {
+    override def authorise[A](predicate: Predicate, retrieval: Retrieval[A])(implicit hc: HeaderCarrier): Future[A] = {
+      Future.successful(Json.parse(s"""{ "internalId": "$internalAuthId" }""").as(retrieval.reads))
+    }
+  }
 
   def mockInsert(expectedData: SurveyData, internalAuthId: String)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
-    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData, _: String))
-      .expects(expectedData, internalAuthId)
+    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData, _: String)(_: () => DateTime))
+      .expects(expectedData, internalAuthId, getNow)
       .returning(Future.successful(result))
 
   val surveyWhitelist = Set("a", "b")
@@ -62,10 +70,9 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
   "The controller" when {
 
     def doInsert(request: Request[AnyContent]): Future[Result] =
-      controller.addWidgetData(Nino("some-nino")).apply(request)
+      controller.addWidgetData(Nino("CS700100A")).apply(request)
 
     val data = randomData().copy(campaignId = "a")
-    val internalAuthId = "some-internal-auth-id"
 
     "handling requests to insert surveyData" must {
 

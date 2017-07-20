@@ -49,6 +49,9 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
 
   "The SurveyWidgetDataService" when {
 
+    val artificialNow = new DateTime(2000, 1, 1,13, 0)
+    implicit val getNow = () => artificialNow
+
     "add widget surveyData" must {
       def data(campaignId: String): SurveyData =
         randomData().copy(campaignId = campaignId)
@@ -63,17 +66,17 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
       "return a RepoError if the repo returns an error" in {
         val d = data("a")
         val ai = "some-internal-auth-id"
-        val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData, DateTime.now())
+        val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData, artificialNow)
         val message = "uh oh"
         mockRepoInsert(dp)(Left(message))
 
-        await(service.addWidgetData(d, ai)) shouldBe Left(RepoError(message))
+        await(service.addWidgetData(d, ai)(() => artificialNow)) shouldBe Left(RepoError(message))
       }
 
       "return DataPersisted if the repo returns successfully" in {
         val d = data("a")
         val ai = "some-internal-auth-id"
-        val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData, DateTime.now())
+        val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData, artificialNow)
         mockRepoInsert(dp)(Right(DataPersisted()))
 
         await(service.addWidgetData(d, ai)) shouldBe Right(DataPersisted())

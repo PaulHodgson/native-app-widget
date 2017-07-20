@@ -18,14 +18,14 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import cats.syntax.either._
 import com.google.inject.{Inject, Singleton}
+import org.joda.time.DateTime
 import play.api.Logger
 import play.api.data.validation.ValidationError
 import play.api.libs.json.{JsPath, Json}
 import play.api.mvc._
-import uk.gov.hmrc.auth.core.AuthorisedFunctions
+import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
 import uk.gov.hmrc.auth.core.Retrievals._
 import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.nativeappwidget.MicroserviceAuthConnector
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
@@ -36,8 +36,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
-                                           override val authConnector: MicroserviceAuthConnector)
-                                          (implicit ec: ExecutionContext) extends BaseController with AuthorisedFunctions {
+                                           override val authConnector: AuthConnector)
+                                          (implicit ec: ExecutionContext, now: () => DateTime) extends BaseController with AuthorisedFunctions {
 
   val logger = Logger(this.getClass)
 

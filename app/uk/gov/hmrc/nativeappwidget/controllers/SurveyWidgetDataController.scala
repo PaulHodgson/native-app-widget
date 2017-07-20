@@ -18,7 +18,6 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import cats.syntax.either._
 import com.google.inject.{Inject, Singleton}
-import org.joda.time.DateTime
 import play.api.Logger
 import play.api.data.validation.ValidationError
 import play.api.libs.json.{JsPath, Json}
@@ -37,27 +36,26 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
                                            override val authConnector: AuthConnector)
-                                          (implicit ec: ExecutionContext, now: () => DateTime) extends BaseController with AuthorisedFunctions {
+                                          (implicit ec: ExecutionContext) extends BaseController with AuthorisedFunctions {
 
   val logger = Logger(this.getClass)
 
-  def addWidgetData(nino: Nino): Action[AnyContent] = Action.async {  implicit request ⇒
-    authorised().retrieve(internalId) { internalId =>
-      if(internalId == None){
+  def addWidgetData(nino: Nino): Action[AnyContent] = Action.async { implicit request ⇒
+    authorised().retrieve(internalId) {
+      case None =>
         logger.error(s"Internal auth id not found")
         Future.successful(BadRequest("Internal id not found"))
-      }
-      parseSurveyData(request).fold(
-        { e ⇒
-          logger.error(s"Could not parse survey surveyData in request: $e")
-          Future.successful(BadRequest(e))
-        },
-        { data ⇒
-            service.addWidgetData(data, internalId.get).map { r ⇒
-              handleSurveyWidgetResult(r, data, internalId.get)
+      case Some(id) =>
+        parseSurveyData(request).fold(
+          { e ⇒
+            logger.error(s"Could not parse survey surveyData in request: $e")
+            Future.successful(BadRequest(e))
+          }, { data ⇒
+            service.addWidgetData(data, id).map { r ⇒
+              handleSurveyWidgetResult(r, data, id)
             }
-        }
-      )
+          }
+        )
     }
   }
 

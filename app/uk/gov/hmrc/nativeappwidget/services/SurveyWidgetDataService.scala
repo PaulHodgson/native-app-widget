@@ -31,7 +31,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @ImplementedBy(classOf[SurveyWidgetDataService])
 trait SurveyWidgetDataServiceAPI {
 
-  def addWidgetData(data: SurveyData, internalAuthId: String)(implicit now: () => DateTime): Future[Either[SurveyWidgetError, DataPersisted]]
+  def addWidgetData(data: SurveyData, internalAuthId: String): Future[Either[SurveyWidgetError, DataPersisted]]
 
 }
 
@@ -48,13 +48,14 @@ object SurveyWidgetDataServiceAPI {
 
 @Singleton
 class SurveyWidgetDataService @Inject()(repo: SurveyWidgetRepository,
-                                        configuration: Configuration
+                                        configuration: Configuration,
+                                        now: () => DateTime
                                        )(implicit ec: ExecutionContext) extends SurveyWidgetDataServiceAPI {
 
   val whitelistedSurveys: Set[String] =
     configuration.underlying.getStringList("widget.surveys").asScala.toSet
 
-  def addWidgetData(data: SurveyData, internalAuthId: String)(implicit now: () => DateTime): Future[Either[SurveyWidgetError, DataPersisted]] =
+  def addWidgetData(data: SurveyData, internalAuthId: String): Future[Either[SurveyWidgetError, DataPersisted]] =
     if(whitelistedSurveys.contains(data.campaignId)) {
       repo.persistData(SurveyDataPersist(data.campaignId, internalAuthId, data.surveyData, now())).map(_.leftMap(RepoError))
     } else {

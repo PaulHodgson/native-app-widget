@@ -40,7 +40,9 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
        |widget.surveys = [${surveyWhitelist.map(s ⇒ '"' + s + '"').mkString(",")}]
     """.stripMargin)
 
-  val service = new SurveyWidgetDataService(mockRepo, Configuration(config))
+  val artificialNow = new DateTime(2000, 1, 1,13, 0)
+
+  val service = new SurveyWidgetDataService(mockRepo, Configuration(config), () => artificialNow)
 
   def mockRepoInsert(data: SurveyDataPersist)(result: Either[String,DataPersisted]) =
     (mockRepo.persistData(_: SurveyDataPersist))
@@ -49,7 +51,6 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
 
   "The SurveyWidgetDataService" when {
 
-    val artificialNow = new DateTime(2000, 1, 1,13, 0)
     implicit val getNow = () => artificialNow
 
     "add widget surveyData" must {
@@ -70,7 +71,7 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
         val message = "uh oh"
         mockRepoInsert(dp)(Left(message))
 
-        await(service.addWidgetData(d, ai)(() => artificialNow)) shouldBe Left(RepoError(message))
+        await(service.addWidgetData(d, ai)) shouldBe Left(RepoError(message))
       }
 
       "return DataPersisted if the repo returns successfully" in {

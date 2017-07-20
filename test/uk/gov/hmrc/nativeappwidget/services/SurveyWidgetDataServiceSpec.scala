@@ -17,6 +17,7 @@
 package uk.gov.hmrc.nativeappwidget.services
 
 import com.typesafe.config.ConfigFactory
+import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import play.api.Configuration
@@ -62,7 +63,7 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
       "return a RepoError if the repo returns an error" in {
         val d = data("a")
         val ai = "some-internal-auth-id"
-        val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData)
+        val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData, DateTime.now())
         val message = "uh oh"
         mockRepoInsert(dp)(Left(message))
 
@@ -72,7 +73,7 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
       "return DataPersisted if the repo returns successfully" in {
         val d = data("a")
         val ai = "some-internal-auth-id"
-        val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData)
+        val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData, DateTime.now())
         mockRepoInsert(dp)(Right(DataPersisted()))
 
         await(service.addWidgetData(d, ai)) shouldBe Right(DataPersisted())

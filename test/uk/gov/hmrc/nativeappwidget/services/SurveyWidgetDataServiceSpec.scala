@@ -40,9 +40,7 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
        |widget.surveys = [${surveyWhitelist.map(s ⇒ '"' + s + '"').mkString(",")}]
     """.stripMargin)
 
-  val artificialNow = new DateTime(2000, 1, 1,13, 0)
-
-  val service = new SurveyWidgetDataService(mockRepo, Configuration(config), () => artificialNow)
+  val service = new SurveyWidgetDataService(mockRepo, Configuration(config))
 
   def mockRepoInsert(data: SurveyDataPersist)(result: Either[String,DataPersisted]) =
     (mockRepo.persistData(_: SurveyDataPersist))
@@ -51,7 +49,8 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
 
   "The SurveyWidgetDataService" when {
 
-    implicit val getNow = () => artificialNow
+    val artificialNow = new DateTime(2000, 1, 1,13, 0)
+    val getNow = () => artificialNow
 
     "add widget surveyData" must {
       def data(campaignId: String): SurveyData =
@@ -61,7 +60,7 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
 
       "return Unauthorised if the campaing ID in the surveyData is not in " +
         "the configured whitelist" in {
-        await(service.addWidgetData(data("x"), "some-internal-auth-id")) shouldBe Left(Unauthorised)
+        await(service.addWidgetData(data("x"), "some-internal-auth-id", getNow)) shouldBe Left(Unauthorised)
       }
 
       "return a RepoError if the repo returns an error" in {
@@ -71,7 +70,7 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
         val message = "uh oh"
         mockRepoInsert(dp)(Left(message))
 
-        await(service.addWidgetData(d, ai)) shouldBe Left(RepoError(message))
+        await(service.addWidgetData(d, ai, getNow)) shouldBe Left(RepoError(message))
       }
 
       "return DataPersisted if the repo returns successfully" in {
@@ -80,7 +79,7 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
         val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData, artificialNow)
         mockRepoInsert(dp)(Right(DataPersisted()))
 
-        await(service.addWidgetData(d, ai)) shouldBe Right(DataPersisted())
+        await(service.addWidgetData(d, ai, getNow)) shouldBe Right(DataPersisted())
 
       }
 

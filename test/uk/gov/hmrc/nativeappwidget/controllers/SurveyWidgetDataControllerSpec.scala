@@ -23,13 +23,12 @@ import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
-import play.api.libs.json.{Format, JsNull, Json}
+import play.api.libs.json.{Format, Json}
 import play.api.mvc.{AnyContent, AnyContentAsText, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import uk.gov.hmrc.auth.core.{AuthConnector, Predicate, Retrieval}
 import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.nativeappwidget.MicroserviceAuthConnector
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
@@ -51,8 +50,8 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
   val mockAuthConnector = mock[AuthConnector]
 
   def mockInsert(expectedData: SurveyData, internalAuthId: String)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
-    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData, _: String))
-      .expects(expectedData, internalAuthId)
+    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData, _: String, _: () => DateTime))
+      .expects(expectedData, internalAuthId, *)
       .returning(Future.successful(result))
 
   def mockAuth(internalAuthId: Option[String]) = {

@@ -33,7 +33,6 @@ object MicroserviceAuditConnector extends AuditConnector with RunMode {
   override lazy val auditingConfig = LoadAuditingConfig(s"auditing")
 }
 
-@Singleton
 class MicroserviceAuthConnector extends PlayAuthConnector with ServicesConfig {
   override val serviceUrl: String = baseUrl("auth")
 

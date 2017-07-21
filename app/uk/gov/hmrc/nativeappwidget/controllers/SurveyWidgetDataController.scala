@@ -18,10 +18,13 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import cats.syntax.either._
 import com.google.inject.{Inject, Singleton}
-import play.api.data.validation.ValidationError
-import play.api.libs.json.JsPath
-import play.api.mvc._
 import play.api.Logger
+import play.api.data.validation.ValidationError
+import play.api.libs.json.{JsPath, Json}
+import play.api.mvc._
+import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
+import uk.gov.hmrc.auth.core.Retrievals._
+import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
@@ -31,23 +34,32 @@ import uk.gov.hmrc.play.microservice.controller.BaseController
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI)(implicit ec: ExecutionContext) extends BaseController {
+class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
+                                           override val authConnector: AuthConnector)
+                                          (implicit ec: ExecutionContext) extends BaseController with AuthorisedFunctions {
 
   val logger = Logger(this.getClass)
 
-  def addWidgetData: Action[AnyContent] = Action.async { implicit request ⇒
-    parseSurveyData(request).fold(
-      { e ⇒
-        logger.error(s"Could not parse survey data in request: $e")
-        Future.successful(BadRequest(e))
-      }, { data ⇒
-        service.addWidgetData(data).map{r ⇒ handleSurveyWidgetResult(r, data)}
-      }
-    )
+  def addWidgetData(nino: Nino): Action[AnyContent] = Action.async { implicit request ⇒
+    authorised().retrieve(internalId) {
+      case None =>
+        logger.error(s"Internal auth id not found")
+        Future.successful(BadRequest("Internal id not found"))
+      case Some(id) =>
+        parseSurveyData(request).fold(
+          { e ⇒
+            logger.error(s"Could not parse survey surveyData in request: $e")
+            Future.successful(BadRequest(e))
+          }, { data ⇒
+            service.addWidgetData(data, id).map { r ⇒
+              handleSurveyWidgetResult(r, data, id)
+            }
+          }
+        )
+    }
   }
 
-
-  private def parseSurveyData(request: Request[AnyContent]): Either[String,SurveyData] =
+  private def parseSurveyData(request: Request[AnyContent]): Either[String, SurveyData] =
     request.body.asJson.fold[Either[String,SurveyData]](
       Left("Expected JSON in body")
     ){
@@ -58,19 +70,20 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI)(
         })
     }
 
-  private def handleSurveyWidgetResult(result: Either[SurveyWidgetError, DataPersisted],
-                                       data: SurveyData): Result = {
+  private def handleSurveyWidgetResult(result: Either[SurveyWidgetError, DataPersisted], data: SurveyData,
+                                       internalAuthId: String): Result = {
+    val idString = s"campaignId: '${data.campaignId}', internalAuthId: '$internalAuthId'"
     result.fold(
-      _ match {
+    _ match {
         case Unauthorised ⇒
-          logger.warn(s"Received request to insert survey data but the campaign ID wasn't whitelisted: ${data.idString}")
-          Unauthorized
+          logger.warn(s"Received request to insert survey surveyData but the campaign ID wasn't whitelisted: $idString")
+          Unauthorized(Json.toJson(s"""{"status":$UNAUTHORIZED}"""))
         case RepoError(message) ⇒
-          logger.error(s"Could not insert into repo (${data.idString}): $message")
-          InternalServerError
+          logger.error(s"Could not insert into repo ($idString): $message")
+          InternalServerError(Json.toJson(s"""{"status":$INTERNAL_SERVER_ERROR}"""))
       },{ _ ⇒
-        logger.debug(s"Successfully inserted into repo (${data.idString})")
-        Ok
+        logger.debug(s"Successfully inserted into repo ($idString)")
+        Ok(Json.toJson(s"""{"status":$OK}"""))
       }
     )
   }

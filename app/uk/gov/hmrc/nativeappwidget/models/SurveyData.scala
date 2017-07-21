@@ -16,39 +16,37 @@
 
 package uk.gov.hmrc.nativeappwidget.models
 
+import org.joda.time.DateTime
 import play.api.libs.json.{Format, Json}
-import uk.gov.hmrc.nativeappwidget.models.SurveyData.KeyValuePair
 
 /**
-  * Represents data we write to our repo
+  * Represents surveyData we are posted in the service request
   *
-  * @param campaignId - an ID which associates the data to a particular party
-  * @param internalAuthid - the internal auth ID identifying a person
-  * @param data - the actual data
+  * @param campaignId - an ID which associates the surveyData to a particular party
+  * @param surveyData - the actual surveyData
   */
 case class SurveyData(campaignId: String,
-                      internalAuthid: String,
-                      data : List[KeyValuePair]) {
+                      surveyData : List[KeyValuePair]) {
+}
 
-  /** A string suitable for identifying the data in logs */
-  val idString: String = s"campaignId: '$campaignId', internalAuthId: '$internalAuthid'"
+case class KeyValuePair(key: String, value: Content)
+
+case class Content(content: String, contentType: Option[String], additionalInfo: Option[String])
+
+object Content {
+  implicit val contentFormat: Format[Content] = Json.format[Content]
+}
+
+object KeyValuePair {
+  implicit val keyValuePairFormat: Format[KeyValuePair] = Json.format[KeyValuePair]
 }
 
 object SurveyData {
-
-  case class KeyValuePair(key: String, value: Content)
-
-  case class Content(content: String, contentType: Option[String])
-
-  object KeyValuePair {
-    implicit val keyValuePairFormat: Format[KeyValuePair] = Json.format[KeyValuePair]
-  }
-
-  object Content {
-    implicit val contentFormat: Format[Content] = Json.format[Content]
-
-  }
-
   implicit val dataFormat: Format[SurveyData] = Json.format[SurveyData]
-
 }
+
+
+
+
+
+

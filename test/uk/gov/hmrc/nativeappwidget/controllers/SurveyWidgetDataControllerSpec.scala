@@ -19,66 +19,86 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.typesafe.config.ConfigFactory
+import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
-import play.api.Configuration
 import play.api.libs.json.{Format, Json}
 import play.api.mvc.{AnyContent, AnyContentAsText, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
+import uk.gov.hmrc.auth.core._
+import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
-import uk.gov.hmrc.nativeappwidget.services.{SurveyWidgetDataService, SurveyWidgetDataServiceAPI}
+import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
+import uk.gov.hmrc.play.http.HeaderCarrier
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFactory with BeforeAndAfterAll with GeneratorDrivenPropertyChecks {
 
   implicit val system = ActorSystem("test-system")
   implicit val materializer = ActorMaterializer()
 
+  val internalAuthId = "some-internal-auth-id"
   val mockSurveyWidgetDataServiceAPI: SurveyWidgetDataServiceAPI = mock[SurveyWidgetDataServiceAPI]
+  val mockAuthConnector = mock[AuthConnector]
 
-  def mockInsert(expectedData: SurveyData)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
-    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData))
-      .expects(expectedData)
+  def mockInsert(expectedData: SurveyData, internalAuthId: String)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
+    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData, _: String))
+      .expects(expectedData, internalAuthId)
       .returning(Future.successful(result))
 
-  val surveyWhitelist = Set("a", "b")
+  def mockAuth(internalAuthId: Option[String]) = {
+    (mockAuthConnector.authorise(_: Predicate, _: Retrieval[Option[String]])(_: HeaderCarrier))
+      .expects(EmptyPredicate, Retrievals.internalId, *)
+      .returning(Future.successful(internalAuthId))
+  }
 
-
-  val controller: SurveyWidgetDataController = new SurveyWidgetDataController(mockSurveyWidgetDataServiceAPI)
-
+  val controller: SurveyWidgetDataController = new SurveyWidgetDataController(mockSurveyWidgetDataServiceAPI, mockAuthConnector)
 
   "The controller" when {
 
     def doInsert(request: Request[AnyContent]): Future[Result] =
-      controller.addWidgetData.apply(request)
+      controller.addWidgetData(Nino("CS700100A")).apply(request)
 
-    val data = randomData().copy(campaignId = "a")
+    val data: SurveyData = randomData().copy(campaignId = "a")
 
-    "handling requests to insert data" must {
+    "handling requests to insert surveyData" must {
 
-      "insert the data from the body of the request into the repo" in {
-        mockInsert(data)(Left(RepoError("Uh oh!")))
-        doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
+      "insert the surveyData from the body of the request into the repo" in {
+        inSequence {
+          mockAuth(Some(internalAuthId))
+          mockInsert(data, internalAuthId)(Left(RepoError("Uh oh!")))
+        }
+        await(doInsert(FakeRequest().withJsonBody(Json.toJson(data))))
+      }
+
+      "handles no internalAuthId" in {
+        mockAuth(None)
+        val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
+
+        status(result) shouldBe BAD_REQUEST
       }
 
       "return an OK 200 if the insert was successful" in {
-        mockInsert(data)(Right(DataPersisted()))
-
+        inSequence {
+          mockAuth(Some(internalAuthId))
+          mockInsert(data, internalAuthId)(Right(DataPersisted()))
+        }
         val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
         status(result) shouldBe OK
       }
 
       "return a BadRequest 400" when {
         "the body of the request wasn't JSON" in {
+          mockAuth(Some(internalAuthId))
+
           val result = doInsert(FakeRequest()
             .withBody[AnyContentAsText](AnyContentAsText("This isn't JSON"))
           )
@@ -86,6 +106,8 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
         }
 
         "the body contained JSON in an unexpected format" in {
+          mockAuth(Some(internalAuthId))
+
           val result = doInsert(FakeRequest()
             .withJsonBody(Json.toJson(UnsupportedData("???"))))
           status(result) shouldBe BAD_REQUEST
@@ -95,7 +117,11 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       "return an InternalServerError 500" when {
 
         "the insert into the repo was unsuccessful" in {
-          mockInsert(data)(Left(RepoError("Oh no!")))
+          inSequence {
+            mockAuth(Some(internalAuthId))
+            mockInsert(data, internalAuthId)(Left(RepoError("Oh no!")))
+          }
+
           val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
           status(result) shouldBe INTERNAL_SERVER_ERROR
         }
@@ -104,7 +130,11 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       "return a Unauthorized 401" when {
 
         "the service indicates the campaign ID wasn't whitelisted" in {
-          mockInsert(data)(Left(Unauthorised))
+          inSequence {
+            mockAuth(Some(internalAuthId))
+            mockInsert(data, internalAuthId)(Left(Unauthorised))
+          }
+
           val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
           status(result) shouldBe UNAUTHORIZED
 

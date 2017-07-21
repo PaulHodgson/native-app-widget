@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.nativeappwidget.repos
 
+import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import play.modules.reactivemongo.ReactiveMongoComponent
@@ -24,6 +25,7 @@ import reactivemongo.api.commands.{DefaultWriteResult, WriteError, WriteResult}
 import reactivemongo.api.indexes.Index
 import uk.gov.hmrc.mongo.MongoConnector
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
+import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository.SurveyDataPersist
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -40,6 +42,10 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
 
   val mockMongo: ReactiveMongoComponent = mock[ReactiveMongoComponent]
 
+  val artificialNow = new DateTime(2000, 1, 1,13, 0)
+
+
+
   val store: SurveyWidgetMongoRepository = {
     // when we start SurveyWidgetMongoRepository there will some calls made by the ReactiveRepository
     // class it extends which we can't control - but we don't care about those calls.
@@ -51,17 +57,18 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
 
     new SurveyWidgetMongoRepository(mockMongo) {
 
+      override def now(): DateTime = artificialNow
+
       override def indexes: Seq[Index] = Seq.empty[Index]
 
-      override def insert(entity: SurveyData
-                         )(implicit ec: ExecutionContext): Future[WriteResult] =
-        mockDBFunctions.insert[SurveyData, WriteResult](entity)
+      override def insert(entity: SurveyDataPersist)(implicit ec: ExecutionContext): Future[WriteResult] =
+        mockDBFunctions.insert[SurveyDataPersist, WriteResult](entity)
 
     }
   }
 
-  def mockInsert(data: SurveyData)(result: ⇒ Future[WriteResult]): Unit =
-    (mockDBFunctions.insert[SurveyData, WriteResult](_: SurveyData))
+  def mockInsert(data: SurveyDataPersist)(result: ⇒ Future[WriteResult]): Unit =
+    (mockDBFunctions.insert[SurveyDataPersist, WriteResult](_: SurveyDataPersist))
       .expects(data)
       .returning(result)
 
@@ -70,39 +77,44 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
 
     val data = randomData()
 
+    val internalAuthId = "id"
+
+    def toDataPersist(data: SurveyData, internalAuthId: String): SurveyDataPersist =
+      SurveyDataPersist(data.campaignId, internalAuthId, data.surveyData, artificialNow)
+
     "putting" must {
 
-      def put(data: SurveyData): Either[String, DataPersisted] =
-        Await.result(store.persistData(data), 5.seconds)
+      def put(data: SurveyData, internalAuthId: String): Either[String, DataPersisted] =
+        Await.result(store.persistData(data, internalAuthId), 5.seconds)
 
       val successfulWriteResult = DefaultWriteResult(true, 0, Seq.empty[WriteError], None, None, None)
 
       val unsuccessfulWriteResult = successfulWriteResult.copy(ok = false)
 
       "insert into the mongodb collection" in {
-        mockInsert(data)(Future.successful(successfulWriteResult))
+        mockInsert(toDataPersist(data, internalAuthId))(Future.successful(successfulWriteResult))
 
-        put(data)
+        put(data, internalAuthId)
       }
 
       "return successfully if the write was successful" in {
-        mockInsert(data)(Future.successful(successfulWriteResult))
+        mockInsert(toDataPersist(data, internalAuthId))(Future.successful(successfulWriteResult))
 
-        put(data) shouldBe Right(DataPersisted())
+        put(data, internalAuthId) shouldBe Right(DataPersisted())
       }
 
       "return an error" when {
 
         "the write result from mongo is negative" in {
-          mockInsert(data)(Future.successful(unsuccessfulWriteResult))
+          mockInsert(toDataPersist(data, internalAuthId))(Future.successful(unsuccessfulWriteResult))
 
-          put(data).isLeft shouldBe true
+          put(data, internalAuthId).isLeft shouldBe true
         }
 
         "the future returned by mongo fails" in {
-          mockInsert(data)(Future.failed(new Exception))
+          mockInsert(toDataPersist(data, internalAuthId))(Future.failed(new Exception))
 
-          put(data).isLeft shouldBe true
+          put(data, internalAuthId).isLeft shouldBe true
 
         }
 

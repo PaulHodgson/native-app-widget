@@ -39,39 +39,42 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
        |widget.surveys = [${surveyWhitelist.map(s ⇒ '"' + s + '"').mkString(",")}]
     """.stripMargin)
 
+
   val service = new SurveyWidgetDataService(mockRepo, Configuration(config))
 
-  def mockRepoInsert(data: SurveyData)(result: Either[String,DataPersisted]) =
-    (mockRepo.persistData(_: SurveyData))
-      .expects(data)
+  def mockRepoInsert(data: SurveyData, internalAuthId: String)(result: Either[String,DataPersisted]) =
+    (mockRepo.persistData(_: SurveyData, _: String))
+      .expects(data, internalAuthId)
       .returning(Future.successful(result))
 
   "The SurveyWidgetDataService" when {
 
-    "add widget data" must {
+    "add widget surveyData" must {
       def data(campaignId: String): SurveyData =
         randomData().copy(campaignId = campaignId)
 
       def await[T](f: Future[T]): T = Await.result(f, 5.seconds)
 
-      "return Unauthorised if the campaing ID in the data is not in " +
+      "return Unauthorised if the campaing ID in the surveyData is not in " +
         "the configured whitelist" in {
-        await(service.addWidgetData(data("x"))) shouldBe Left(Unauthorised)
+        await(service.addWidgetData(data("x"), "some-internal-auth-id")) shouldBe Left(Unauthorised)
       }
 
       "return a RepoError if the repo returns an error" in {
         val d = data("a")
+        val ai = "some-internal-auth-id"
         val message = "uh oh"
-        mockRepoInsert(d)(Left(message))
+        mockRepoInsert(d, ai)(Left(message))
 
-        await(service.addWidgetData(d)) shouldBe Left(RepoError(message))
+        await(service.addWidgetData(d, ai)) shouldBe Left(RepoError(message))
       }
 
       "return DataPersisted if the repo returns successfully" in {
         val d = data("a")
-        mockRepoInsert(d)(Right(DataPersisted()))
+        val ai = "some-internal-auth-id"
+        mockRepoInsert(d, ai)(Right(DataPersisted()))
 
-        await(service.addWidgetData(d)) shouldBe Right(DataPersisted())
+        await(service.addWidgetData(d, ai)) shouldBe Right(DataPersisted())
 
       }
 

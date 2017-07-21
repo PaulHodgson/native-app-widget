@@ -29,8 +29,7 @@ object MicroServiceBuild extends Build with MicroService {
     "org.pegdown" % "pegdown" % "1.6.0" % scope,
     "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
     "org.scalamock" %% "scalamock-scalatest-support" % "3.5.0" % scope,
-    "org.scalacheck" %% "scalacheck" % "1.13.4" % scope,
-    "com.fortysevendeg" %% "scalacheck-datetime" % "0.2.0" % scope
+    "org.scalacheck" %% "scalacheck" % "1.13.4" % scope
   )
 
 }

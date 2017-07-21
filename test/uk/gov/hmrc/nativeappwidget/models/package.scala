@@ -15,9 +15,7 @@
  */
 
 package uk.gov.hmrc.nativeappwidget
-import com.fortysevendeg.scalacheck.datetime.instances.joda._
-import com.fortysevendeg.scalacheck.datetime.GenDateTime
-import org.joda.time.{DateTime, Period}
+
 import org.scalacheck.Gen
 
 package object models {
@@ -36,21 +34,12 @@ package object models {
       content ← contentGen
     } yield KeyValuePair(key, content)
 
-  def dataPersistGen: Gen[SurveyDataPersist] =
-    for {
-      campaignId ← Gen.alphaNumStr
-      internalAuthId ← Gen.alphaNumStr
-      data ← Gen.listOf(keyValueGen)
-      created ← GenDateTime.genDateTimeWithinRange(DateTime.now(), Period.years(1))
-    } yield SurveyDataPersist(campaignId, internalAuthId, data, created)
-
   def dataGen: Gen[SurveyData] =
     for {
       campaignId ← Gen.alphaNumStr
       data ← Gen.listOf(keyValueGen)
     } yield SurveyData(campaignId, data)
 
-  def randomDataPersist(): SurveyDataPersist = dataPersistGen.sample.getOrElse(sys.error("Could not generate surveyData persist"))
   def randomData(): SurveyData = dataGen.sample.getOrElse(sys.error("Could not generate surveyData"))
 
 }

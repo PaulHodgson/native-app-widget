@@ -27,7 +27,7 @@ import play.api.libs.json.{Format, Json}
 import play.api.mvc.{AnyContent, AnyContentAsText, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import uk.gov.hmrc.auth.core.{AuthConnector, Predicate, Retrieval}
+import uk.gov.hmrc.auth.core._
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
@@ -50,13 +50,13 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
   val mockAuthConnector = mock[AuthConnector]
 
   def mockInsert(expectedData: SurveyData, internalAuthId: String)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
-    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData, _: String, _: () => DateTime))
-      .expects(expectedData, internalAuthId, *)
+    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData, _: String))
+      .expects(expectedData, internalAuthId)
       .returning(Future.successful(result))
 
   def mockAuth(internalAuthId: Option[String]) = {
     (mockAuthConnector.authorise(_: Predicate, _: Retrieval[Option[String]])(_: HeaderCarrier))
-      .expects(*, *, *)
+      .expects(EmptyPredicate, Retrievals.internalId, *)
       .returning(Future.successful(internalAuthId))
   }
 

@@ -20,22 +20,6 @@ import org.joda.time.DateTime
 import play.api.libs.json.{Format, Json}
 
 /**
-  * Represents surveyData we write to our repo
-  *
-  * @param campaignId - an ID which associates the surveyData to a particular party
-  * @param internalAuthid - the internal auth ID identifying a person
-  * @param surveyData - the actual surveyData
-  */
-case class SurveyDataPersist(campaignId: String,
-                             internalAuthid: String,
-                             surveyData : List[KeyValuePair],
-                             created : DateTime) {
-
-  /** A string suitable for identifying the surveyData in logs */
-  val idString: String = s"campaignId: '$campaignId', internalAuthId: '$internalAuthid'"
-}
-
-/**
   * Represents surveyData we are posted in the service request
   *
   * @param campaignId - an ID which associates the surveyData to a particular party
@@ -55,10 +39,6 @@ object Content {
 
 object KeyValuePair {
   implicit val keyValuePairFormat: Format[KeyValuePair] = Json.format[KeyValuePair]
-}
-
-object SurveyDataPersist {
-  implicit val dataFormat: Format[SurveyDataPersist] = Json.format[SurveyDataPersist]
 }
 
 object SurveyData {

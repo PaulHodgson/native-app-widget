@@ -17,11 +17,10 @@
 package uk.gov.hmrc.nativeappwidget.services
 
 import com.typesafe.config.ConfigFactory
-import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import play.api.Configuration
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, SurveyDataPersist, randomData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
 import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
 
@@ -40,17 +39,15 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
        |widget.surveys = [${surveyWhitelist.map(s ⇒ '"' + s + '"').mkString(",")}]
     """.stripMargin)
 
+
   val service = new SurveyWidgetDataService(mockRepo, Configuration(config))
 
-  def mockRepoInsert(data: SurveyDataPersist)(result: Either[String,DataPersisted]) =
-    (mockRepo.persistData(_: SurveyDataPersist))
-      .expects(data)
+  def mockRepoInsert(data: SurveyData, internalAuthId: String)(result: Either[String,DataPersisted]) =
+    (mockRepo.persistData(_: SurveyData, _: String))
+      .expects(data, internalAuthId)
       .returning(Future.successful(result))
 
   "The SurveyWidgetDataService" when {
-
-    val artificialNow = new DateTime(2000, 1, 1,13, 0)
-    val getNow = () => artificialNow
 
     "add widget surveyData" must {
       def data(campaignId: String): SurveyData =
@@ -60,26 +57,24 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
 
       "return Unauthorised if the campaing ID in the surveyData is not in " +
         "the configured whitelist" in {
-        await(service.addWidgetData(data("x"), "some-internal-auth-id", getNow)) shouldBe Left(Unauthorised)
+        await(service.addWidgetData(data("x"), "some-internal-auth-id")) shouldBe Left(Unauthorised)
       }
 
       "return a RepoError if the repo returns an error" in {
         val d = data("a")
         val ai = "some-internal-auth-id"
-        val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData, artificialNow)
         val message = "uh oh"
-        mockRepoInsert(dp)(Left(message))
+        mockRepoInsert(d, ai)(Left(message))
 
-        await(service.addWidgetData(d, ai, getNow)) shouldBe Left(RepoError(message))
+        await(service.addWidgetData(d, ai)) shouldBe Left(RepoError(message))
       }
 
       "return DataPersisted if the repo returns successfully" in {
         val d = data("a")
         val ai = "some-internal-auth-id"
-        val dp = SurveyDataPersist(d.campaignId, ai, d.surveyData, artificialNow)
-        mockRepoInsert(dp)(Right(DataPersisted()))
+        mockRepoInsert(d, ai)(Right(DataPersisted()))
 
-        await(service.addWidgetData(d, ai, getNow)) shouldBe Right(DataPersisted())
+        await(service.addWidgetData(d, ai)) shouldBe Right(DataPersisted())
 
       }
 

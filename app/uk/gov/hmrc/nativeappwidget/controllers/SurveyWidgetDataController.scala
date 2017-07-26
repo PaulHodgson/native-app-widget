@@ -77,13 +77,13 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
     _ match {
         case Unauthorised ⇒
           logger.warn(s"Received request to insert survey surveyData but the campaign ID wasn't whitelisted: $idString")
-          Unauthorized(Json.toJson(s"""{"status":$UNAUTHORIZED}"""))
+          Unauthorized(Json.toJson(Json.obj("status" -> UNAUTHORIZED)))
         case RepoError(message) ⇒
           logger.error(s"Could not insert into repo ($idString): $message")
-          InternalServerError(Json.toJson(s"""{"status":$INTERNAL_SERVER_ERROR}"""))
+          InternalServerError(Json.toJson(Json.obj("status" -> INTERNAL_SERVER_ERROR)))
       },{ _ ⇒
         logger.debug(s"Successfully inserted into repo ($idString)")
-        Ok(Json.toJson(s"""{"status":$OK}"""))
+        Ok(Json.toJson(Json.obj("status" -> OK)))
       }
     )
   }

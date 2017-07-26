@@ -93,6 +93,7 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
         }
         val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
         status(result) shouldBe OK
+        contentAsJson(result) shouldBe Json.parse("""{"status":200}""")
       }
 
       "return a BadRequest 400" when {

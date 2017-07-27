@@ -25,7 +25,7 @@ import play.api.mvc._
 import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
 import uk.gov.hmrc.auth.core.Retrievals._
 import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
@@ -77,13 +77,13 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
     _ match {
         case Unauthorised ⇒
           logger.warn(s"Received request to insert survey surveyData but the campaign ID wasn't whitelisted: $idString")
-          Unauthorized(Json.toJson(s"""{"status":$UNAUTHORIZED}"""))
+          Unauthorized(Json.toJson(Response(UNAUTHORIZED)))
         case RepoError(message) ⇒
           logger.error(s"Could not insert into repo ($idString): $message")
-          InternalServerError(Json.toJson(s"""{"status":$INTERNAL_SERVER_ERROR}"""))
+          InternalServerError(Json.toJson(Response(INTERNAL_SERVER_ERROR)))
       },{ _ ⇒
         logger.debug(s"Successfully inserted into repo ($idString)")
-        Ok(Json.toJson(s"""{"status":$OK}"""))
+        Ok(Json.toJson(Response(OK)))
       }
     )
   }

@@ -1,6 +1,5 @@
 import play.core.PlayVersion
 import play.sbt.PlayImport._
-import play.sbt.routes.RoutesKeys.routesImport
 import sbt._
 
 object AppDependencies {
@@ -22,7 +21,9 @@ object AppDependencies {
 
   def test(scope: String = "test,it") = Seq(
     "uk.gov.hmrc" %% "hmrctest" % "2.3.0" % scope,
-    "org.scalatest" %% "scalatest" % "2.2.6" % scope,
+    "org.scalatest" %% "scalatest" % "3.0.1" % scope,
+    "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.1" % scope,
+    "com.github.tomakehurst" % "wiremock" % "2.9.0" % scope,
     "org.pegdown" % "pegdown" % "1.6.0" % scope,
     "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
     "org.scalamock" %% "scalamock-scalatest-support" % "3.5.0" % scope,

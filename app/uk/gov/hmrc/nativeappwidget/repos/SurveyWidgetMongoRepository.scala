@@ -51,7 +51,7 @@ object SurveyWidgetRepository {
     * @param internalAuthid - the internal auth ID identifying a person
     * @param surveyData - the actual surveyData
     */
-  private[repos] case class SurveyDataPersist(campaignId: String,
+  case class SurveyDataPersist(campaignId: String,
                                internalAuthid: String,
                                surveyData : List[KeyValuePair],
                                created : DateTime) {

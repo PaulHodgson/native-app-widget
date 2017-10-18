@@ -16,25 +16,28 @@
 
 package uk.gov.hmrc.nativeappwidget
 
-import com.google.inject.Singleton
 import uk.gov.hmrc.auth.core.PlayAuthConnector
-import uk.gov.hmrc.play.audit.http.config.LoadAuditingConfig
+import uk.gov.hmrc.http._
+import uk.gov.hmrc.http.hooks.{HttpHook, HttpHooks}
+import uk.gov.hmrc.play.audit.http.config.AuditingConfig
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
-import uk.gov.hmrc.play.config.{AppName, RunMode, ServicesConfig}
-import uk.gov.hmrc.play.http.HttpPost
-import uk.gov.hmrc.play.http.hooks.HttpHook
+import uk.gov.hmrc.play.config.{AppName, ServicesConfig}
 import uk.gov.hmrc.play.http.ws._
+import uk.gov.hmrc.play.microservice.config.LoadAuditingConfig
 
-object WSHttp extends WSGet with WSPut with WSPost with WSDelete with WSPatch with AppName {
+object MicroserviceAuditConnector extends AuditConnector {
+  lazy val auditingConfig: AuditingConfig = LoadAuditingConfig(s"auditing")
+}
+
+trait Hooks extends HttpHooks {
   override val hooks: Seq[HttpHook] = NoneRequired
 }
 
-object MicroserviceAuditConnector extends AuditConnector with RunMode {
-  override lazy val auditingConfig = LoadAuditingConfig(s"auditing")
-}
+trait WSHttp extends HttpGet with WSGet with HttpPut with WSPut with HttpPost with WSPost with HttpDelete with WSDelete with Hooks with AppName
+object WSHttp extends WSHttp
 
 class MicroserviceAuthConnector extends PlayAuthConnector with ServicesConfig {
   override val serviceUrl: String = baseUrl("auth")
 
-  override def http: HttpPost = WSHttp
+  override def http: CorePost = WSHttp
 }

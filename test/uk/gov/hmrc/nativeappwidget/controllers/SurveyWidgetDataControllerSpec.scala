@@ -19,7 +19,6 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
@@ -28,17 +27,19 @@ import play.api.mvc.{AnyContent, AnyContentAsText, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import uk.gov.hmrc.auth.core._
+import uk.gov.hmrc.auth.core.authorise.{EmptyPredicate, Predicate}
+import uk.gov.hmrc.auth.core.retrieve.{Retrieval, Retrievals}
 import uk.gov.hmrc.domain.Nino
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
-import uk.gov.hmrc.play.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFactory with BeforeAndAfterAll with GeneratorDrivenPropertyChecks {
 
@@ -55,8 +56,8 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       .returning(Future.successful(result))
 
   def mockAuth(internalAuthId: Option[String]) = {
-    (mockAuthConnector.authorise(_: Predicate, _: Retrieval[Option[String]])(_: HeaderCarrier))
-      .expects(EmptyPredicate, Retrievals.internalId, *)
+    (mockAuthConnector.authorise(_: Predicate, _: Retrieval[Option[String]])(_: HeaderCarrier, _: ExecutionContext))
+      .expects(EmptyPredicate, Retrievals.internalId, *, *)
       .returning(Future.successful(internalAuthId))
   }
 

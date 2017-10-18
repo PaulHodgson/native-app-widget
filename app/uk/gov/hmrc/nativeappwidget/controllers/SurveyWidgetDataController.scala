@@ -22,7 +22,7 @@ import play.api.Logger
 import play.api.data.validation.ValidationError
 import play.api.libs.json.{JsPath, Json}
 import play.api.mvc._
-import uk.gov.hmrc.auth.core.Retrievals._
+import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyData}

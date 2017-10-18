@@ -17,17 +17,13 @@
 package uk.gov.hmrc.nativeappwidget
 
 import com.typesafe.config.Config
+import net.ceedubs.ficus.Ficus._
 import play.api.{Application, Configuration, Play}
 import uk.gov.hmrc.play.audit.filters.AuditFilter
 import uk.gov.hmrc.play.config.{AppName, ControllerConfig, RunMode}
+import uk.gov.hmrc.play.filters.MicroserviceFilterSupport
 import uk.gov.hmrc.play.http.logging.filters.LoggingFilter
 import uk.gov.hmrc.play.microservice.bootstrap.DefaultMicroserviceGlobal
-import net.ceedubs.ficus.Ficus._
-import uk.gov.hmrc.play.filters.MicroserviceFilterSupport
-import play.api.i18n.Messages.Implicits._
-import play.api.Play.current
-import uk.gov.hmrc.auth.core.AuthConnector
-import uk.gov.hmrc.auth.filter.{AuthorisationFilter, FilterConfig}
 
 
 object ControllerConfiguration extends ControllerConfig {
@@ -43,12 +39,6 @@ object MicroserviceLoggingFilter extends LoggingFilter with MicroserviceFilterSu
   override def controllerNeedsLogging(controllerName: String) = ControllerConfiguration.paramsForController(controllerName).needsLogging
 }
 
-object MicroserviceAuthFilter extends AuthorisationFilter with MicroserviceFilterSupport {
-  override def config: FilterConfig = FilterConfig(ControllerConfiguration.controllerConfigs)
-
-  override def connector: AuthConnector = new MicroserviceAuthConnector
-}
-
 object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with MicroserviceFilterSupport {
   override val auditConnector = MicroserviceAuditConnector
 
@@ -58,5 +48,5 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Mi
 
   override val microserviceAuditFilter = MicroserviceAuditFilter
 
-  override val authFilter = Some(MicroserviceAuthFilter)
+  override val authFilter = None
 }

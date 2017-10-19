@@ -27,9 +27,9 @@ import uk.gov.hmrc.mongo.MongoConnector
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
 import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository.SurveyDataPersist
 
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 
 class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFactory {
@@ -89,8 +89,6 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
 
       val successfulWriteResult = DefaultWriteResult(true, 0, Seq.empty[WriteError], None, None, None)
 
-      val unsuccessfulWriteResult = successfulWriteResult.copy(ok = false)
-
       "insert into the mongodb collection" in {
         mockInsert(toDataPersist(data, internalAuthId))(Future.successful(successfulWriteResult))
 
@@ -105,17 +103,10 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
 
       "return an error" when {
 
-        "the write result from mongo is negative" in {
-          mockInsert(toDataPersist(data, internalAuthId))(Future.successful(unsuccessfulWriteResult))
-
-          put(data, internalAuthId).isLeft shouldBe true
-        }
-
         "the future returned by mongo fails" in {
           mockInsert(toDataPersist(data, internalAuthId))(Future.failed(new Exception))
 
           put(data, internalAuthId).isLeft shouldBe true
-
         }
 
       }

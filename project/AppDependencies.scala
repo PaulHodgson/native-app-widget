@@ -7,7 +7,7 @@ object AppDependencies {
   lazy val appDependencies: Seq[ModuleID] = compile ++ test()
 
   val compile = Seq(
-    "uk.gov.hmrc" %% "play-reactivemongo" % "5.2.0",
+    "uk.gov.hmrc" %% "play-reactivemongo" % "6.1.0",
     ws,
     "uk.gov.hmrc" %% "microservice-bootstrap" % "6.9.0",
     "uk.gov.hmrc" %% "domain" % "5.0.0",

@@ -93,14 +93,9 @@ class SurveyWidgetMongoRepository @Inject()(mongo: ReactiveMongoComponent)(impli
 
     logger.info(s"Persisting surveyData into surveyData store (${dataToPersist.idString})")
 
-    insert(dataToPersist).map[Either[String,DataPersisted]]{ result ⇒
-      if (!result.ok) {
-        Left(s"Failed to write to surveyData store: ${result.errmsg.getOrElse("-")}. " +
-          s"Write errors were ${result.writeErrors.map(_.errmsg).mkString(",")}")
-      } else {
-        logger.info(s"Successfully wrote to surveyData store (${dataToPersist.idString})")
-        Right(DataPersisted())
-      }
+    insert(dataToPersist).map[Either[String, DataPersisted]] { _ ⇒
+      logger.info(s"Successfully wrote to surveyData store (${dataToPersist.idString})")
+      Right(DataPersisted())
     }.recover{ case e ⇒
       logger.error(s"Could not write to surveyData store (${dataToPersist.idString})", e)
       Left(s"Failed to write to surveyData store: ${e.getMessage}")

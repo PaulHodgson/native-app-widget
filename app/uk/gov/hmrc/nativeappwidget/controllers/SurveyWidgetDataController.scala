@@ -29,7 +29,7 @@ import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
-import uk.gov.hmrc.play.microservice.controller.BaseController
+import uk.gov.hmrc.play.bootstrap.controller.BaseController
 
 import scala.concurrent.{ExecutionContext, Future}
 

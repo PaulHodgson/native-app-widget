@@ -22,7 +22,7 @@ import akka.stream.ActorMaterializer
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.{Format, JsSuccess, Json}
 import play.api.mvc.{AnyContent, AnyContentAsText, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
@@ -55,6 +55,11 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       .expects(expectedData, internalAuthId)
       .returning(Future.successful(result))
 
+  def mockRetrieve(campaignId: String)(result: Either[String,List[SurveyData]]): Unit =
+    (mockSurveyWidgetDataServiceAPI.getData(_: String))
+      .expects(campaignId)
+      .returning(Future.successful(result))
+
   def mockAuth(internalAuthId: Option[String]) = {
     (mockAuthConnector.authorise(_: Predicate, _: Retrieval[Option[String]])(_: HeaderCarrier, _: ExecutionContext))
       .expects(EmptyPredicate, Retrievals.internalId, *, *)
@@ -65,12 +70,12 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
 
   "The controller" when {
 
-    def doInsert(request: Request[AnyContent]): Future[Result] =
-      controller.addWidgetData(Nino("CS700100A")).apply(request)
-
-    val data: SurveyData = randomData().copy(campaignId = "a")
-
     "handling requests to insert surveyData" must {
+
+      def doInsert(request: Request[AnyContent]): Future[Result] =
+        controller.addWidgetData(Nino("CS700100A"))(request)
+
+      val data: SurveyData = randomData().copy(campaignId = "a")
 
       "insert the surveyData from the body of the request into the repo" in {
         inSequence {
@@ -143,6 +148,35 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       }
 
     }
+
+    "handling requests to retrieve survey data" must {
+
+      def doRetrieve(campaignId: String): Future[Result] =
+        controller.getWidgetData(campaignId)(FakeRequest())
+
+      val campaignId = "campaign"
+
+      val data = List.fill(10)(randomData())
+
+      "return an InternalServerError if there is an error in the retrieval" in {
+        mockRetrieve(campaignId)(Left(""))
+
+        val result = doRetrieve(campaignId)
+        status(result) shouldBe INTERNAL_SERVER_ERROR
+      }
+
+      "return the data if the retrieval is successful" in {
+        mockRetrieve(campaignId)(Right(data))
+
+        val result = doRetrieve(campaignId)
+        status(result) shouldBe OK
+        val jsValue = contentAsJson(result)
+        (jsValue \ "data").validate[List[SurveyData]] shouldBe JsSuccess(data)
+
+      }
+
+    }
+
   }
 
   override def afterAll(): Unit = {

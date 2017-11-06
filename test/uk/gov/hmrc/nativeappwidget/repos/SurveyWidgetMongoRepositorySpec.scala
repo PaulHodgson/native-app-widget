@@ -19,6 +19,8 @@ package uk.gov.hmrc.nativeappwidget.repos
 import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
+import play.api.libs.json.Json.{JsValueWrapper, toJsFieldJsValueWrapper}
+import play.api.libs.json.{JsString, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DefaultDB
 import reactivemongo.api.commands.{DefaultWriteResult, WriteError, WriteResult}
@@ -36,6 +38,7 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
 
   trait MockDBFunctions {
     def insert[A, B](a: A): Future[B]
+    def get[ID,A](key: String, id: ID): Future[List[A]]
   }
 
   val mockDBFunctions: MockDBFunctions = mock[MockDBFunctions]
@@ -43,8 +46,6 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
   val mockMongo: ReactiveMongoComponent = mock[ReactiveMongoComponent]
 
   val artificialNow = new DateTime(2000, 1, 1,13, 0)
-
-
 
   val store: SurveyWidgetMongoRepository = {
     // when we start SurveyWidgetMongoRepository there will some calls made by the ReactiveRepository
@@ -64,6 +65,12 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
       override def insert(entity: SurveyDataPersist)(implicit ec: ExecutionContext): Future[WriteResult] =
         mockDBFunctions.insert[SurveyDataPersist, WriteResult](entity)
 
+      override def find(query: (String, Json.JsValueWrapper)*)(implicit ec: ExecutionContext): Future[List[SurveyDataPersist]] =
+        query.toList match {
+          case (key, value) :: Nil ⇒ mockDBFunctions.get(key, value)
+          case _                   ⇒ sys.error("Unsupported operation")
+        }
+
     }
   }
 
@@ -72,17 +79,21 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
       .expects(data)
       .returning(result)
 
+  def mockRetrieve(campaignId: String)(result: ⇒ Future[List[SurveyDataPersist]]): Unit =
+    (mockDBFunctions.get[JsValueWrapper, SurveyDataPersist](_: String, _: JsValueWrapper))
+    .expects("campaignId", toJsFieldJsValueWrapper(JsString(campaignId)))
+    .returning(result)
 
   "The SurveyWidgetMongoRepository" when {
-
-    val data = randomData()
-
-    val internalAuthId = "id"
 
     def toDataPersist(data: SurveyData, internalAuthId: String): SurveyDataPersist =
       SurveyDataPersist(data.campaignId, internalAuthId, data.surveyData, artificialNow)
 
     "putting" must {
+
+      val data = randomData()
+
+      val internalAuthId = "id"
 
       def put(data: SurveyData, internalAuthId: String): Either[String, DataPersisted] =
         Await.result(store.persistData(data, internalAuthId), 5.seconds)
@@ -111,6 +122,33 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
 
       }
     }
+
+    "getting" must {
+
+      def get(campaignId: String): Either[String,List[SurveyData]] =
+        Await.result(store.getData(campaignId), 5.seconds)
+
+      val campaignId = "campaign"
+
+      val data = List.fill(5)(randomData())
+
+      val dataPersist = data.map(d ⇒ toDataPersist(d, ""))
+
+      "return the data if the retrieval is successful" in {
+        mockRetrieve(campaignId)(Future.successful(dataPersist))
+
+        val result = get(campaignId)
+        result shouldBe Right(data)
+      }
+
+      "return an error if the retrieval is unsuccessful" in {
+        mockRetrieve(campaignId)(Future.failed(new Exception("")))
+
+        get(campaignId).isLeft shouldBe true
+      }
+
+    }
+
   }
 
 }

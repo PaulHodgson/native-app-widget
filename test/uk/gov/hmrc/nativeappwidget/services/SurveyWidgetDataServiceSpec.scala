@@ -47,13 +47,19 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
       .expects(data, internalAuthId)
       .returning(Future.successful(result))
 
+  def mockRepoRetrieve(campaignId: String)(result: Either[String,List[SurveyData]]) =
+    (mockRepo.getData(_: String))
+      .expects(campaignId)
+      .returning(Future.successful(result))
+
+  def await[T](f: Future[T]): T = Await.result(f, 5.seconds)
+
+
   "The SurveyWidgetDataService" when {
 
     "add widget surveyData" must {
       def data(campaignId: String): SurveyData =
         randomData().copy(campaignId = campaignId)
-
-      def await[T](f: Future[T]): T = Await.result(f, 5.seconds)
 
       "return Unauthorised if the campaing ID in the surveyData is not in " +
         "the configured whitelist" in {
@@ -78,6 +84,23 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
 
       }
 
+    }
+
+    "getting data" must {
+      val campaignId = "campaign"
+      val data = List.fill(10)(randomData())
+
+      "return a successful response if the repo call is successful" in {
+        mockRepoRetrieve(campaignId)(Right(data))
+
+        await(service.getData(campaignId)) shouldBe Right(data)
+      }
+
+      "return a negative response if the repo call is unsuccessful" in {
+        mockRepoRetrieve(campaignId)(Left("uh oh"))
+
+        await(service.getData(campaignId)) shouldBe Left("uh oh")
+      }
     }
 
   }

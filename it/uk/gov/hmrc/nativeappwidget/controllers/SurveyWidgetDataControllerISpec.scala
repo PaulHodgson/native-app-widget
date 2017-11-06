@@ -18,15 +18,17 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import java.util.UUID
 
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.{JsObject, Json}
-import uk.gov.hmrc.nativeappwidget.models.{Content, KeyValuePair}
+import play.api.libs.json.{JsObject, JsSuccess, Json}
+import uk.gov.hmrc.nativeappwidget.models.{Content, KeyValuePair, SurveyData}
 import uk.gov.hmrc.nativeappwidget.repos.{SurveyWidgetMongoRepository, SurveyWidgetRepository}
 import uk.gov.hmrc.nativeappwidget.stubs.AuthStub
 import uk.gov.hmrc.nativeappwidget.support.BaseISpec
 
 import scala.collection.immutable
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
@@ -57,8 +59,12 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
     )
   )
 
-  protected lazy val surveyWidgetRepository: SurveyWidgetMongoRepository = app.injector.instanceOf[SurveyWidgetMongoRepository]
+  val expectedSurveyData = List(
+    KeyValuePair("question_1", Content(content = "true", contentType = Some("Boolean"), additionalInfo = Some("Would you like us to contact you?"))),
+    KeyValuePair("question_2", Content(content = "John Doe", contentType = Some("String"), additionalInfo = Some("What is your full name?")))
+  )
 
+  protected lazy val surveyWidgetRepository: SurveyWidgetMongoRepository = app.injector.instanceOf[SurveyWidgetMongoRepository]
 
   "POST /native-app-widget/:nino/widget-data" should {
     "store survey data in mongo against the user's internal auth ID" in {
@@ -74,13 +80,22 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
         storedSurveyDatas.size shouldBe 1
         val storedSurveyData = storedSurveyDatas.head
         storedSurveyData.campaignId shouldBe campaignId
-        storedSurveyData.surveyData shouldBe List(
-          KeyValuePair("question_1", Content(content = "true", contentType = Some("Boolean"), additionalInfo = Some("Would you like us to contact you?"))),
-          KeyValuePair("question_2", Content(content = "John Doe", contentType = Some("String"), additionalInfo = Some("What is your full name?")))
-        )
+        storedSurveyData.surveyData shouldBe expectedSurveyData
       }
 
-      surveyWidgetRepository.remove("internalAuthid" -> internalAuthid)
+    }
+
+    "GET /native-app-widget/widget-data" should {
+      "retrieve data" in {
+        val response = await(wsUrl(s"/native-app-widget/widget-data?campaignId=$campaignId").get())
+        response.status shouldBe 200
+        Option(response.json).isDefined shouldBe true // double check the json in the body is not null
+        (response.json \ "data").validate[List[SurveyData]] shouldBe JsSuccess(List(SurveyData(campaignId, expectedSurveyData)))
+      }
+    }
+
+    "cleanup" in {
+      await(surveyWidgetRepository.remove("campaignId" -> campaignId))(5.seconds)
     }
   }
 }

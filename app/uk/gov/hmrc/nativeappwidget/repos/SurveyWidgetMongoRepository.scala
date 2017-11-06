@@ -28,6 +28,7 @@ import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, KeyValuePair, SurveyDa
 import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository.SurveyDataPersist
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 @ImplementedBy(classOf[SurveyWidgetMongoRepository])
 trait SurveyWidgetRepository {
@@ -39,6 +40,9 @@ trait SurveyWidgetRepository {
     * @param data The surveyData to insert
     */
   def persistData(data: SurveyData, internalAuthId: String): Future[Either[String,DataPersisted]]
+
+
+  def getData(campaignId: String): Future[Either[String,List[SurveyData]]]
 
 }
 
@@ -101,5 +105,15 @@ class SurveyWidgetMongoRepository @Inject()(mongo: ReactiveMongoComponent)(impli
       Left(s"Failed to write to surveyData store: ${e.getMessage}")
     }
   }
+
+  def getData(campaignId: String): Future[Either[String,List[SurveyData]]] = {
+    find("campaignId" → campaignId)
+      .map[Either[String,List[SurveyData]]](l ⇒ Right(l.map(data ⇒ SurveyData(data.campaignId, data.surveyData))))
+      .recover{
+        case NonFatal(e) ⇒
+          Left(s"Failed to retrieve data for campaign id: $campaignId: ${e.getMessage}")
+      }
+  }
+
 
 }

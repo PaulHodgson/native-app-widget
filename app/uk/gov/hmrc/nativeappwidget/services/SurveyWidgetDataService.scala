@@ -34,6 +34,8 @@ trait SurveyWidgetDataServiceAPI {
                     internalAuthId: String
                    ): Future[Either[SurveyWidgetError, DataPersisted]]
 
+  def getData(campaignId: String): Future[Either[String,List[SurveyData]]]
+
 }
 
 object SurveyWidgetDataServiceAPI {
@@ -61,5 +63,7 @@ class SurveyWidgetDataService @Inject()(repo: SurveyWidgetRepository,
       Future.successful(Left(Unauthorised))
     }
 
-}
+  def getData(campaignId: String): Future[Either[String,List[SurveyData]]] =
+    repo.getData(campaignId)
 
+}

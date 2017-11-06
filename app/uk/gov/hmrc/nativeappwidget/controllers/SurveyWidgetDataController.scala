@@ -20,11 +20,12 @@ import cats.syntax.either._
 import com.google.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.data.validation.ValidationError
-import play.api.libs.json.{JsPath, Json}
+import play.api.libs.json.{Format, JsPath, Json}
 import play.api.mvc._
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
 import uk.gov.hmrc.domain.Nino
+import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.GetDataResponse
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
@@ -59,6 +60,17 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
     }
   }
 
+  def getWidgetData(campaignId: String): Action[AnyContent] = Action.async { implicit request ⇒
+    service.getData(campaignId).map{ _.fold(
+      { e ⇒
+        logger.error(e)
+        InternalServerError
+      },{ data ⇒
+        Ok(Json.toJson(GetDataResponse(data)))
+      }
+    )}
+  }
+
   private def parseSurveyData(request: Request[AnyContent]): Either[String, SurveyData] =
     request.body.asJson.fold[Either[String,SurveyData]](
       Left("Expected JSON in body")
@@ -91,5 +103,15 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
   private def prettyPrint(jsErrors: Seq[(JsPath, Seq[ValidationError])]): String = jsErrors.map { case (jsPath, validationErrors) ⇒
     jsPath.toString + ": [" + validationErrors.map(_.message).mkString(",") + "]"
   }.mkString("; ")
+
+}
+
+object SurveyWidgetDataController {
+
+  private case class GetDataResponse(data: List[SurveyData])
+
+  private object GetDataResponse {
+    implicit val format: Format[GetDataResponse] = Json.format[GetDataResponse]
+  }
 
 }

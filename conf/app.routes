@@ -1,1 +1,2 @@
-POST    /:nino/widget-data  uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.addWidgetData(nino: uk.gov.hmrc.domain.Nino)
+POST    /:nino/widget-data          uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.addWidgetData(nino: uk.gov.hmrc.domain.Nino)
+GET     /widget-data                uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.getWidgetData(campaignId)

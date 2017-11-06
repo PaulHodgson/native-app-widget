@@ -18,10 +18,11 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import java.util.UUID
 
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.{JsObject, Json}
-import uk.gov.hmrc.nativeappwidget.models.{Content, KeyValuePair}
+import play.api.libs.json.{JsObject, JsSuccess, Json}
+import uk.gov.hmrc.nativeappwidget.models.{Content, KeyValuePair, SurveyData}
 import uk.gov.hmrc.nativeappwidget.repos.{SurveyWidgetMongoRepository, SurveyWidgetRepository}
 import uk.gov.hmrc.nativeappwidget.stubs.AuthStub
 import uk.gov.hmrc.nativeappwidget.support.BaseISpec
@@ -29,7 +30,7 @@ import uk.gov.hmrc.nativeappwidget.support.BaseISpec
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
+class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually with BeforeAndAfterEach {
   private val campaignId = "TEST_CAMPAIGN_1"
 
   override protected def appBuilder: GuiceApplicationBuilder = super.appBuilder
@@ -57,8 +58,17 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
     )
   )
 
+  val expectedSurveyData = List(
+    KeyValuePair("question_1", Content(content = "true", contentType = Some("Boolean"), additionalInfo = Some("Would you like us to contact you?"))),
+    KeyValuePair("question_2", Content(content = "John Doe", contentType = Some("String"), additionalInfo = Some("What is your full name?")))
+  )
+
   protected lazy val surveyWidgetRepository: SurveyWidgetMongoRepository = app.injector.instanceOf[SurveyWidgetMongoRepository]
 
+  override protected def afterEach(): Unit = {
+    super.afterEach()
+    await(surveyWidgetRepository.remove("campaignId" -> campaignId))
+  }
 
   "POST /native-app-widget/:nino/widget-data" should {
     "store survey data in mongo against the user's internal auth ID" in {
@@ -74,13 +84,9 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
         storedSurveyDatas.size shouldBe 1
         val storedSurveyData = storedSurveyDatas.head
         storedSurveyData.campaignId shouldBe campaignId
-        storedSurveyData.surveyData shouldBe List(
-          KeyValuePair("question_1", Content(content = "true", contentType = Some("Boolean"), additionalInfo = Some("Would you like us to contact you?"))),
-          KeyValuePair("question_2", Content(content = "John Doe", contentType = Some("String"), additionalInfo = Some("What is your full name?")))
-        )
+        storedSurveyData.surveyData shouldBe expectedSurveyData
       }
-
-      surveyWidgetRepository.remove("internalAuthid" -> internalAuthid)
     }
   }
+
 }

@@ -18,7 +18,7 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import java.util.UUID
 
-import org.scalatest.BeforeAndAfterAll
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, JsSuccess, Json}
@@ -28,10 +28,9 @@ import uk.gov.hmrc.nativeappwidget.stubs.AuthStub
 import uk.gov.hmrc.nativeappwidget.support.BaseISpec
 
 import scala.collection.immutable
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
+class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually with BeforeAndAfterEach {
   private val campaignId = "TEST_CAMPAIGN_1"
 
   override protected def appBuilder: GuiceApplicationBuilder = super.appBuilder
@@ -66,6 +65,11 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
 
   protected lazy val surveyWidgetRepository: SurveyWidgetMongoRepository = app.injector.instanceOf[SurveyWidgetMongoRepository]
 
+  override protected def afterEach(): Unit = {
+    super.afterEach()
+    await(surveyWidgetRepository.remove("campaignId" -> campaignId))
+  }
+
   "POST /native-app-widget/:nino/widget-data" should {
     "store survey data in mongo against the user's internal auth ID" in {
       val internalAuthid = s"Test-${UUID.randomUUID().toString}}"
@@ -82,20 +86,21 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
         storedSurveyData.campaignId shouldBe campaignId
         storedSurveyData.surveyData shouldBe expectedSurveyData
       }
-
     }
+  }
 
-    "GET /native-app-widget/widget-data" should {
-      "retrieve data" in {
-        val response = await(wsUrl(s"/native-app-widget/widget-data?campaignId=$campaignId").get())
-        response.status shouldBe 200
-        Option(response.json).isDefined shouldBe true // double check the json in the body is not null
-        (response.json \ "data").validate[List[SurveyData]] shouldBe JsSuccess(List(SurveyData(campaignId, expectedSurveyData)))
+  "GET /native-app-widget/widget-data" should {
+    "retrieve data previously POSTed" in {
+      val internalAuthid = s"Test-${UUID.randomUUID().toString}}"
+      AuthStub.authoriseWithoutPredicatesWillReturnInternalId(internalAuthid)
+      val postResponse = await(wsUrl("/native-app-widget/CS700100A/widget-data").post(validSurveyData))
+      postResponse.status shouldBe 200
+
+      eventually {
+        val getResponse = await(wsUrl(s"/native-app-widget/widget-data?campaignId=$campaignId").get())
+        getResponse.status shouldBe 200
+        (getResponse.json \ "data").validate[List[SurveyData]] shouldBe JsSuccess(List(SurveyData(campaignId, expectedSurveyData)))
       }
-    }
-
-    "cleanup" in {
-      await(surveyWidgetRepository.remove("campaignId" -> campaignId))(5.seconds)
     }
   }
 }

@@ -67,7 +67,7 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually with Bef
 
   override protected def afterEach(): Unit = {
     super.afterEach()
-    await(surveyWidgetRepository.remove("campaignId" -> campaignId))
+    // await(surveyWidgetRepository.remove("campaignId" -> campaignId))
   }
 
   "POST /native-app-widget/:nino/widget-data" should {

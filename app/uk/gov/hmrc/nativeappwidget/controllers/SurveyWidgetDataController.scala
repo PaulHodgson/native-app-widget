@@ -16,11 +16,16 @@
 
 package uk.gov.hmrc.nativeappwidget.controllers
 
+import java.io.InputStream
+
+import akka.stream.scaladsl.{Source, StreamConverters}
+import akka.util.ByteString
 import cats.syntax.either._
 import com.google.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.data.validation.ValidationError
-import play.api.libs.json.{Format, JsPath, Json}
+import play.api.http.Writeable
+import play.api.libs.json.{Format, JsObject, JsPath, Json}
 import play.api.mvc._
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
@@ -60,13 +65,17 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
     }
   }
 
+  implicit val writeableChar: Writeable[Char] = new Writeable[Char](c ⇒ ByteString(c.toString), None)
+
   def getWidgetData(campaignId: String): Action[AnyContent] = Action.async { implicit request ⇒
     service.getData(campaignId).map{ _.fold(
       { e ⇒
         logger.error(e)
         InternalServerError
       },{ data ⇒
-        Ok(Json.toJson(GetDataResponse(data.map(_.surveyData))))
+        val chunkSize = 2
+        val source = Source(Json.toJson(GetDataResponse(data.map(_.surveyData))).toString.grouped(chunkSize).toList)
+        Ok.chunked(source).as("application/json")
       }
     )}
   }

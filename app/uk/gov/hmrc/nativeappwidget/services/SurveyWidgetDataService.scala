@@ -64,6 +64,10 @@ class SurveyWidgetDataService @Inject()(repo: SurveyWidgetRepository,
     }
 
   def getData(campaignId: String): Future[Either[String,List[SurveyData]]] =
-    repo.getData(campaignId)
+    if(whitelistedSurveys.contains(campaignId)) {
+      repo.getData(campaignId)
+    } else {
+      Future.successful(Left("Campaign not whitelisted"))
+    }
 
 }

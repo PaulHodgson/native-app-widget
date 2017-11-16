@@ -99,7 +99,7 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually with Bef
       eventually {
         val getResponse = await(wsUrl(s"/native-app-widget/widget-data?campaignId=$campaignId").get())
         getResponse.status shouldBe 200
-        (getResponse.json \ "data").validate[List[SurveyData]] shouldBe JsSuccess(List(SurveyData(campaignId, expectedSurveyData)))
+        (getResponse.json \ "data").validate[List[List[KeyValuePair]]] shouldBe JsSuccess(List(expectedSurveyData))
       }
     }
   }

@@ -32,7 +32,7 @@ import uk.gov.hmrc.auth.core.retrieve.{Retrieval, Retrievals}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, KeyValuePair, SurveyData, randomData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
@@ -171,7 +171,7 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
         val result = doRetrieve(campaignId)
         status(result) shouldBe OK
         val jsValue = contentAsJson(result)
-        (jsValue \ "data").validate[List[SurveyData]] shouldBe JsSuccess(data)
+        (jsValue \ "data").validate[List[List[KeyValuePair]]] shouldBe JsSuccess(data.map(_.surveyData))
 
       }
 

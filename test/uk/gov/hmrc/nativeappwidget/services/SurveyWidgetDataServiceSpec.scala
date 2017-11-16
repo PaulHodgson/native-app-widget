@@ -87,7 +87,7 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
     }
 
     "getting data" must {
-      val campaignId = "campaign"
+      val campaignId = "a"
       val data = List.fill(10)(randomData())
 
       "return a successful response if the repo call is successful" in {
@@ -101,6 +101,11 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
 
         await(service.getData(campaignId)) shouldBe Left("uh oh")
       }
+
+      "return a negative response if the campaign is not whitelisted" in {
+        await(service.getData("c")).isLeft shouldBe true
+      }
+
     }
 
   }

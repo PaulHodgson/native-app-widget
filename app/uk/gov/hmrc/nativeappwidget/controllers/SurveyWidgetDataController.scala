@@ -26,7 +26,7 @@ import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.GetDataResponse
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, KeyValuePair, Response, SurveyData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
@@ -66,7 +66,7 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
         logger.error(e)
         InternalServerError
       },{ data ⇒
-        Ok(Json.toJson(GetDataResponse(data)))
+        Ok(Json.toJson(GetDataResponse(data.map(_.surveyData))))
       }
     )}
   }
@@ -108,7 +108,7 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
 
 object SurveyWidgetDataController {
 
-  private case class GetDataResponse(data: List[SurveyData])
+  private case class GetDataResponse(data: List[List[KeyValuePair]])
 
   private object GetDataResponse {
     implicit val format: Format[GetDataResponse] = Json.format[GetDataResponse]

@@ -22,8 +22,6 @@ import play.api.Logger
 import play.api.data.validation.ValidationError
 import play.api.libs.json.{JsPath, Json}
 import play.api.mvc._
-import uk.gov.hmrc.auth.core.retrieve.Retrievals._
-import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
@@ -34,14 +32,15 @@ import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
-                                           override val authConnector: AuthConnector)
-                                          (implicit ec: ExecutionContext) extends BaseController with AuthorisedFunctions {
+class SurveyWidgetDataController @Inject()(
+  service: SurveyWidgetDataServiceAPI,
+  authorised: Authorised)
+  (implicit ec: ExecutionContext) extends BaseController {
 
   val logger = Logger(this.getClass)
 
-  def addWidgetData(ignored: Nino): Action[AnyContent] = Action.async { implicit request ⇒
-    authorised().retrieve(internalId) {
+  def addWidgetData(ignored: Nino): Action[AnyContent] = authorised.async { implicit request: AuthorisedRequest[AnyContent] ⇒
+    request.internalAuthId match {
       case None =>
         logger.error(s"Internal auth id not found")
         Future.successful(BadRequest("Internal id not found"))

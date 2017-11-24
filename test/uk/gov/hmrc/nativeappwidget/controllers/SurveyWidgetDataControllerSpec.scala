@@ -61,7 +61,7 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       .returning(Future.successful(internalAuthId))
   }
 
-  val controller: SurveyWidgetDataController = new SurveyWidgetDataController(mockSurveyWidgetDataServiceAPI, mockAuthConnector)
+  val controller: SurveyWidgetDataController = new SurveyWidgetDataController(mockSurveyWidgetDataServiceAPI, ???) // TODO
 
   "The controller" when {
 

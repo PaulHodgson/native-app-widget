@@ -19,6 +19,8 @@ package uk.gov.hmrc.nativeappwidget.repos
 import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
+import play.api.libs.json.Json.{JsValueWrapper, toJsFieldJsValueWrapper}
+import play.api.libs.json.{JsString, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DefaultDB
 import reactivemongo.api.commands.{DefaultWriteResult, WriteError, WriteResult}
@@ -43,8 +45,6 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
   val mockMongo: ReactiveMongoComponent = mock[ReactiveMongoComponent]
 
   val artificialNow = new DateTime(2000, 1, 1,13, 0)
-
-
 
   val store: SurveyWidgetMongoRepository = {
     // when we start SurveyWidgetMongoRepository there will some calls made by the ReactiveRepository
@@ -72,17 +72,16 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
       .expects(data)
       .returning(result)
 
-
   "The SurveyWidgetMongoRepository" when {
-
-    val data = randomData()
-
-    val internalAuthId = "id"
 
     def toDataPersist(data: SurveyData, internalAuthId: String): SurveyDataPersist =
       SurveyDataPersist(data.campaignId, internalAuthId, data.surveyData, artificialNow)
 
     "putting" must {
+
+      val data = randomData()
+
+      val internalAuthId = "id"
 
       def put(data: SurveyData, internalAuthId: String): Either[String, DataPersisted] =
         Await.result(store.persistData(data, internalAuthId), 5.seconds)
@@ -111,6 +110,7 @@ class SurveyWidgetMongoRepositorySpec extends WordSpec with Matchers with MockFa
 
       }
     }
+
   }
 
 }

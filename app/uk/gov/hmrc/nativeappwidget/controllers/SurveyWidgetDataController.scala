@@ -93,3 +93,4 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
   }.mkString("; ")
 
 }
+

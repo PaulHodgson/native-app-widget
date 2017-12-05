@@ -47,13 +47,14 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
       .expects(data, internalAuthId)
       .returning(Future.successful(result))
 
+  def await[T](f: Future[T]): T = Await.result(f, 5.seconds)
+
+
   "The SurveyWidgetDataService" when {
 
     "add widget surveyData" must {
       def data(campaignId: String): SurveyData =
         randomData().copy(campaignId = campaignId)
-
-      def await[T](f: Future[T]): T = Await.result(f, 5.seconds)
 
       "return Unauthorised if the campaing ID in the surveyData is not in " +
         "the configured whitelist" in {

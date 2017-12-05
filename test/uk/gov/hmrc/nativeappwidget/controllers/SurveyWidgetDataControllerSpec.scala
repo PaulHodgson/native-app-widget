@@ -22,7 +22,7 @@ import akka.stream.ActorMaterializer
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.{Format, JsSuccess, Json}
 import play.api.mvc.{AnyContent, AnyContentAsText, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
@@ -32,7 +32,7 @@ import uk.gov.hmrc.auth.core.retrieve.{Retrieval, Retrievals}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, KeyValuePair, SurveyData, randomData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
@@ -65,12 +65,12 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
 
   "The controller" when {
 
-    def doInsert(request: Request[AnyContent]): Future[Result] =
-      controller.addWidgetData(Nino("CS700100A")).apply(request)
-
-    val data: SurveyData = randomData().copy(campaignId = "a")
-
     "handling requests to insert surveyData" must {
+
+      def doInsert(request: Request[AnyContent]): Future[Result] =
+        controller.addWidgetData(Nino("CS700100A"))(request)
+
+      val data: SurveyData = randomData().copy(campaignId = "a")
 
       "insert the surveyData from the body of the request into the repo" in {
         inSequence {
@@ -143,6 +143,7 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       }
 
     }
+
   }
 
   override def afterAll(): Unit = {

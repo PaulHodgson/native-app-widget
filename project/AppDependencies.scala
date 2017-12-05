@@ -13,7 +13,8 @@ object AppDependencies {
     "uk.gov.hmrc" %% "domain" % "5.0.0",
     "uk.gov.hmrc" %% "auth-client" % "2.3.0",
     "uk.gov.hmrc" %% "play-ui" % "7.8.0", // for SimpleObjectBinder
-    "org.typelevel" %% "cats" % "0.9.0"
+    "org.typelevel" %% "cats" % "0.9.0",
+    "uk.gov.hmrc" %% "mongo-lock" % "5.0.0"
   )
 
   def test(scope: String = "test,it") = Seq(

@@ -62,4 +62,3 @@ class SurveyWidgetDataService @Inject()(repo: SurveyWidgetRepository,
     }
 
 }
-

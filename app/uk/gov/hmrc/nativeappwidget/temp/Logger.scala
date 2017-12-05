@@ -16,9 +16,11 @@
 
 package uk.gov.hmrc.nativeappwidget.temp
 
+import cats.Show
 import cats.instances.either._
 import cats.syntax.cartesian._
 import cats.syntax.either._
+import cats.syntax.show._
 import com.google.inject.{Inject, Singleton}
 import org.joda.time
 import play.modules.reactivemongo.ReactiveMongoComponent
@@ -37,7 +39,7 @@ import scala.util.control.NonFatal
 class Logger @Inject()(mongo: ReactiveMongoComponent,
                        repo: SurveyWidgetMongoRepository)(implicit ec: ExecutionContext) {
 
-  def log(message: String): Unit = play.api.Logger.warn(s"[H2S-SURVEY] - $message")
+  def log(message: String): Unit = play.api.Logger.warn(s"[H2S_SURVEY] - $message")
 
   val campaignId = "HELP_TO_SAVE_1"
 
@@ -63,7 +65,8 @@ class Logger @Inject()(mongo: ReactiveMongoComponent,
 
   task.onComplete{
     case Success(Some(Result(errors, answers))) ⇒
-      log(s"answers: {${answers.map(_.toByte).mkString(",")}}; errors: {${errors.mkString(",")}}")
+      val answersString = answers.groupBy(identity).map{ case (a, l) ⇒ s"${a.show}:${l.size}" }.mkString(",")
+      log(s"answers: {$answersString, errors: {${errors.mkString(",")}}")
 
     case Success(None) ⇒
       // do nothing in this case, the lock able to be obtained
@@ -118,19 +121,24 @@ object Logger {
       case "no"  ⇒ Some(No)
       case _     ⇒ None
     }
+
+    implicit val surveyAnswerShowInstance: Show[SurveyAnswer] = new Show[SurveyAnswer] {
+      override def show(f: SurveyAnswer): String = f match {
+        case Yes          ⇒ "Y"
+        case No           ⇒ "N"
+        case DidNotAnswer ⇒ "d"
+      }
+    }
   }
 
-  case class SurveyAnswers(answer1: SurveyAnswer, answer2: SurveyAnswer, answer3: SurveyAnswer){
-    // create a base 3 number (there are 3 possibilities for each answer)
-    def toByte: Byte = {
-      def toByte(a: SurveyAnswer): Byte = a match {
-        case Yes          ⇒ 2
-        case No           ⇒ 1
-        case DidNotAnswer ⇒ 0
-      }
+  case class SurveyAnswers(answer1: SurveyAnswer, answer2: SurveyAnswer, answer3: SurveyAnswer)
 
-      (toByte(answer1) + (3 * toByte(answer2)) + (9 * toByte(answer3))).toByte
+  object SurveyAnswers {
+
+    implicit val surveyAnswersShow: Show[SurveyAnswers] = new Show[SurveyAnswers] {
+      override def show(f: SurveyAnswers): String = s"${f.answer1.show}${f.answer2.show}${f.answer3.show}"
     }
+
   }
 
 }

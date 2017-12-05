@@ -21,7 +21,7 @@ import java.util.UUID
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.{JsObject, JsSuccess, Json}
+import play.api.libs.json.{JsObject, JsSuccess, JsValue, Json}
 import uk.gov.hmrc.nativeappwidget.models.{Content, KeyValuePair, SurveyData}
 import uk.gov.hmrc.nativeappwidget.repos.{SurveyWidgetMongoRepository, SurveyWidgetRepository}
 import uk.gov.hmrc.nativeappwidget.stubs.AuthStub
@@ -31,32 +31,71 @@ import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually with BeforeAndAfterEach {
-  private val campaignId = "TEST_CAMPAIGN_1"
+  private val campaignId = "HELP_TO_SAVE_1" // "TEST_CAMPAIGN_1"
 
   override protected def appBuilder: GuiceApplicationBuilder = super.appBuilder
     .configure("widget.surveys" -> Seq(campaignId))
 
-  private val validSurveyData: JsObject = Json.obj(
-    "campaignId" -> campaignId,
-    "surveyData" -> Json.arr(
-      Json.obj(
-        "key" -> "question_1",
-        "value" -> Json.obj(
-          "content" -> "true",
-          "contentType" -> "Boolean",
-          "additionalInfo" -> "Would you like us to contact you?"
-        )
-      ),
-      Json.obj(
-        "key" -> "question_2",
-        "value" -> Json.obj(
-          "content" -> "John Doe",
-          "contentType" -> "String",
-          "additionalInfo" -> "What is your full name?"
-        )
-      )
-    )
-  )
+  private val validSurveyData: JsValue =
+    Json.parse(
+      s"""
+        |{
+        |  "surveyData": [{
+        |				"key": "question_1",
+        |				"value": {
+        |					"content": "Yes",
+        |					"contentType": "String",
+        |					"additionalInfo": "Would you be interested in a savings account that pays a 50% bonus?"
+        |				}
+        |			}, {
+        |				"key": "question_2",
+        |				"value": {
+        |					"content": "Yes",
+        |					"contentType": "String",
+        |					"additionalInfo": "Do you regularly save money?"
+        |				}
+        |			}, {
+        |				"key": "question_3",
+        |				"value": {
+        |					"content": "Yes",
+        |					"contentType": "String",
+        |					"additionalInfo": "Would you like us to contact you about the savings account?"
+        |				}
+        |			}],
+        |  "campaignId": "HELP_TO_SAVE_1"
+        |}
+      """.stripMargin)
+
+//    Json.obj(
+//    "campaignId" -> campaignId,
+//    "surveyData" -> Json.arr(
+//      Json.obj(
+//        "key" -> "question_1",
+//        "value" -> Json.obj(
+//          "content" -> "true",
+//          "contentType" -> "String",
+//          "additionalInfo" -> "Would you like us to contact you?"
+//        )
+//      ),
+//      Json.obj(
+//        "key" -> "question_2",
+//        "value" -> Json.obj(
+//          "content" -> "John Doe",
+//          "contentType" -> "String",
+//          "additionalInfo" -> "What is your full name?"
+//        )
+//      ),
+//      Json.obj(
+//        "key" -> "question_3",
+//        "value" -> Json.obj(
+//          "content" -> "John Doe",
+//          "contentType" -> "String",
+//          "additionalInfo" -> "What is your full name?"
+//        )
+//      )
+//
+//    )
+//  )
 
   val expectedSurveyData = List(
     KeyValuePair("question_1", Content(content = "true", contentType = Some("Boolean"), additionalInfo = Some("Would you like us to contact you?"))),
@@ -67,7 +106,7 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually with Bef
 
   override protected def afterEach(): Unit = {
     super.afterEach()
-    await(surveyWidgetRepository.remove("campaignId" -> campaignId))
+    // await(surveyWidgetRepository.remove("campaignId" -> campaignId))
   }
 
   "POST /native-app-widget/:nino/widget-data" should {

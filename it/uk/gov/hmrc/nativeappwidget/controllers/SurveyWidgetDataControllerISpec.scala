@@ -65,22 +65,24 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
       val internalAuthid = s"Test-${UUID.randomUUID().toString}}"
       AuthStub.authoriseWithoutPredicatesWillReturnInternalId(internalAuthid)
       val response = await(wsUrl("/native-app-widget/CS700100A/widget-data").post(validSurveyData))
-
       response.status shouldBe 200
 
-      eventually {
-        val storedSurveyDatas: immutable.Seq[SurveyWidgetRepository.SurveyDataPersist] = await(surveyWidgetRepository.find(
-          "internalAuthid" -> internalAuthid))
-        storedSurveyDatas.size shouldBe 1
-        val storedSurveyData = storedSurveyDatas.head
-        storedSurveyData.campaignId shouldBe campaignId
-        storedSurveyData.surveyData shouldBe List(
-          KeyValuePair("question_1", Content(content = "true", contentType = Some("Boolean"), additionalInfo = Some("Would you like us to contact you?"))),
-          KeyValuePair("question_2", Content(content = "John Doe", contentType = Some("String"), additionalInfo = Some("What is your full name?")))
-        )
+      try {
+        eventually {
+          val storedSurveyDatas: immutable.Seq[SurveyWidgetRepository.SurveyDataPersist] = await(surveyWidgetRepository.find(
+            "internalAuthid" -> internalAuthid))
+          storedSurveyDatas.size shouldBe 1
+          val storedSurveyData = storedSurveyDatas.head
+          storedSurveyData.campaignId shouldBe campaignId
+          storedSurveyData.surveyData shouldBe List(
+            KeyValuePair("question_1", Content(content = "true", contentType = Some("Boolean"), additionalInfo = Some("Would you like us to contact you?"))),
+            KeyValuePair("question_2", Content(content = "John Doe", contentType = Some("String"), additionalInfo = Some("What is your full name?")))
+          )
+        }
       }
-
-      surveyWidgetRepository.remove("internalAuthid" -> internalAuthid)
+      finally {
+        surveyWidgetRepository.remove("internalAuthid" -> internalAuthid)
+      }
     }
   }
 }

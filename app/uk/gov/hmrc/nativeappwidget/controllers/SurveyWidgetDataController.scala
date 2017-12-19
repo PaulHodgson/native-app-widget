@@ -25,7 +25,7 @@ import play.api.mvc._
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
 import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyResponse}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
@@ -59,18 +59,18 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
     }
   }
 
-  private def parseSurveyData(request: Request[AnyContent]): Either[String, SurveyData] =
-    request.body.asJson.fold[Either[String,SurveyData]](
+  private def parseSurveyData(request: Request[AnyContent]): Either[String, SurveyResponse] =
+    request.body.asJson.fold[Either[String,SurveyResponse]](
       Left("Expected JSON in body")
     ){
-      _.validate[SurveyData].asEither.leftMap(
+      _.validate[SurveyResponse].asEither.leftMap(
         { e ⇒
           logger.error(s"Could not parse JSON in request: ${prettyPrint(e)}")
           "Invalid JSON in body"
         })
     }
 
-  private def handleSurveyWidgetResult(result: Either[SurveyWidgetError, DataPersisted], data: SurveyData,
+  private def handleSurveyWidgetResult(result: Either[SurveyWidgetError, DataPersisted], data: SurveyResponse,
                                        internalAuthId: String): Result = {
     val idString = s"campaignId: '${data.campaignId}', internalAuthId: '$internalAuthId'"
     result.fold(

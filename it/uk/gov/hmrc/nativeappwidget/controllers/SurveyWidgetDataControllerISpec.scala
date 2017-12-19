@@ -22,7 +22,7 @@ import org.scalatest.concurrent.Eventually
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.nativeappwidget.models.{Content, KeyValuePair}
-import uk.gov.hmrc.nativeappwidget.repos.{SurveyWidgetMongoRepository, SurveyWidgetRepository}
+import uk.gov.hmrc.nativeappwidget.repos.{SurveyResponseMongoRepository, SurveyWidgetRepository}
 import uk.gov.hmrc.nativeappwidget.stubs.AuthStub
 import uk.gov.hmrc.nativeappwidget.support.BaseISpec
 
@@ -57,7 +57,7 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
     )
   )
 
-  protected lazy val surveyWidgetRepository: SurveyWidgetMongoRepository = app.injector.instanceOf[SurveyWidgetMongoRepository]
+  protected lazy val surveyWidgetRepository: SurveyResponseMongoRepository = app.injector.instanceOf[SurveyResponseMongoRepository]
 
 
   "POST /native-app-widget/:nino/widget-data" should {
@@ -69,7 +69,7 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
 
       try {
         eventually {
-          val storedSurveyDatas: immutable.Seq[SurveyWidgetRepository.SurveyDataPersist] = await(surveyWidgetRepository.find(
+          val storedSurveyDatas: immutable.Seq[SurveyWidgetRepository.SurveyResponsePersist] = await(surveyWidgetRepository.find(
             "internalAuthid" -> internalAuthid))
           storedSurveyDatas.size shouldBe 1
           val storedSurveyData = storedSurveyDatas.head

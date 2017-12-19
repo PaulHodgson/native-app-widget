@@ -24,54 +24,54 @@ import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, KeyValuePair, SurveyData}
-import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository.SurveyDataPersist
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, KeyValuePair, SurveyResponse}
+import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository.SurveyResponsePersist
 
 import scala.concurrent.{ExecutionContext, Future}
 
-@ImplementedBy(classOf[SurveyWidgetMongoRepository])
+@ImplementedBy(classOf[SurveyResponseMongoRepository])
 trait SurveyWidgetRepository {
 
   /**
     * Insert surveyData into the repo - return a `Left` if there is an error while inserting,
     * otherwise return a `DataPersisted()`
     *
-    * @param data The surveyData to insert
+    * @param data The SurveyResponse to insert
     */
-  def persistData(data: SurveyData, internalAuthId: String): Future[Either[String,DataPersisted]]
+  def persist(data: SurveyResponse, internalAuthId: String): Future[Either[String,DataPersisted]]
 
 }
 
 object SurveyWidgetRepository {
 
   /**
-    * Represents surveyData we write to our repo
+    * Represents a person's responses to a survey plus
     *
-    * @param campaignId - an ID which associates the surveyData to a particular party
-    * @param internalAuthid - the internal auth ID identifying a person
-    * @param surveyData - the actual surveyData
+    * @param campaignId an ID which associates the surveyData to a particular survey
+    * @param internalAuthid the internal auth ID identifying the person who answered the survey
+    * @param surveyData the questions and answers
     */
-  case class SurveyDataPersist(campaignId: String,
-                               internalAuthid: String,
-                               surveyData : List[KeyValuePair],
-                               created : DateTime) {
+  case class SurveyResponsePersist(campaignId: String,
+                                   internalAuthid: String,
+                                   surveyData: List[KeyValuePair],
+                                   created: DateTime) {
 
     /** A string suitable for identifying the surveyData in logs */
     val idString: String = s"campaignId: '$campaignId', internalAuthId: '$internalAuthid'"
   }
 
-  private[repos] object SurveyDataPersist {
-    implicit val dataFormat: Format[SurveyDataPersist] = Json.format[SurveyDataPersist]
+  private[repos] object SurveyResponsePersist {
+    implicit val dataFormat: Format[SurveyResponsePersist] = Json.format[SurveyResponsePersist]
   }
 }
 
 
 @Singleton
-class SurveyWidgetMongoRepository @Inject()(mongo: ReactiveMongoComponent)(implicit ec: ExecutionContext)
-  extends ReactiveRepository[SurveyDataPersist, BSONObjectID] (
+class SurveyResponseMongoRepository @Inject()(mongo: ReactiveMongoComponent)(implicit ec: ExecutionContext)
+  extends ReactiveRepository[SurveyResponsePersist, BSONObjectID] (
     collectionName = "survey-widgets",
     mongo = mongo.mongoConnector.db,
-    SurveyDataPersist.dataFormat,
+    SurveyResponsePersist.dataFormat,
     ReactiveMongoFormats.objectIdFormats)
     with SurveyWidgetRepository {
 
@@ -88,8 +88,8 @@ class SurveyWidgetMongoRepository @Inject()(mongo: ReactiveMongoComponent)(impli
     )
   )
 
-  override def persistData(data: SurveyData, internalAuthId: String): Future[Either[String, DataPersisted]] = {
-    val dataToPersist = SurveyDataPersist(data.campaignId, internalAuthId, data.surveyData, now())
+  override def persist(surveyResponse: SurveyResponse, internalAuthId: String): Future[Either[String, DataPersisted]] = {
+    val dataToPersist = SurveyResponsePersist(surveyResponse.campaignId, internalAuthId, surveyResponse.surveyData, now())
 
     logger.info(s"Persisting surveyData into surveyData store (${dataToPersist.idString})")
 

@@ -1,1 +1,4 @@
-POST    /:nino/widget-data          uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.addWidgetData(nino: uk.gov.hmrc.domain.Nino)
+POST    /widget-data                uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.addWidgetData()
+
+# Deprecated endpoints
+POST    /:nino/widget-data          uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.deprecatedAddWidgetData(nino: uk.gov.hmrc.domain.Nino)

@@ -57,19 +57,18 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
     )
   )
 
-  protected lazy val surveyWidgetRepository: SurveyResponseMongoRepository = app.injector.instanceOf[SurveyResponseMongoRepository]
+  private lazy val surveyResponseRepository: SurveyResponseMongoRepository = app.injector.instanceOf[SurveyResponseMongoRepository]
 
-
-  "POST /native-app-widget/:nino/widget-data" should {
+  private def aPostSurveyResponseEndpoint(url: String): Unit = {
     "store survey data in mongo against the user's internal auth ID" in {
       val internalAuthid = s"Test-${UUID.randomUUID().toString}}"
       AuthStub.authoriseWithoutPredicatesWillReturnInternalId(internalAuthid)
-      val response = await(wsUrl("/native-app-widget/CS700100A/widget-data").post(validSurveyData))
+      val response = await(wsUrl(url).post(validSurveyData))
       response.status shouldBe 200
 
       try {
         eventually {
-          val storedSurveyDatas: immutable.Seq[SurveyWidgetRepository.SurveyResponsePersist] = await(surveyWidgetRepository.find(
+          val storedSurveyDatas: immutable.Seq[SurveyWidgetRepository.SurveyResponsePersist] = await(surveyResponseRepository.find(
             "internalAuthid" -> internalAuthid))
           storedSurveyDatas.size shouldBe 1
           val storedSurveyData = storedSurveyDatas.head
@@ -81,8 +80,17 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
         }
       }
       finally {
-        surveyWidgetRepository.remove("internalAuthid" -> internalAuthid)
+        surveyResponseRepository.remove("internalAuthid" -> internalAuthid)
       }
     }
+  }
+
+  "POST /native-app-widget/widget-data" should {
+    behave like aPostSurveyResponseEndpoint("/native-app-widget/widget-data")
+  }
+
+  // old, deprecated URL - to be removed once native-apps-api-orchestration has been changed to use the new URL
+  "POST /native-app-widget/:nino/widget-data" should {
+    behave like aPostSurveyResponseEndpoint("/native-app-widget/CS700100A/widget-data")
   }
 }

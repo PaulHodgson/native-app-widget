@@ -40,7 +40,9 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
 
   val logger = Logger(this.getClass)
 
-  def addWidgetData(ignored: Nino): Action[AnyContent] = Action.async { implicit request ⇒
+  def deprecatedAddWidgetData(ignored: Nino): Action[AnyContent] = addWidgetData()
+
+  def addWidgetData(): Action[AnyContent] = Action.async { implicit request ⇒
     authorised().retrieve(internalId) {
       case None =>
         logger.error(s"Internal auth id not found")
@@ -74,14 +76,14 @@ class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
                                        internalAuthId: String): Result = {
     val idString = s"campaignId: '${data.campaignId}', internalAuthId: '$internalAuthId'"
     result.fold(
-    _ match {
+      {
         case Unauthorised ⇒
           logger.warn(s"Received request to insert survey surveyData but the campaign ID wasn't whitelisted: $idString")
           Unauthorized(Json.toJson(Response(UNAUTHORIZED)))
         case RepoError(message) ⇒
           logger.error(s"Could not insert into repo ($idString): $message")
           InternalServerError(Json.toJson(Response(INTERNAL_SERVER_ERROR)))
-      },{ _ ⇒
+      }, { _ ⇒
         logger.debug(s"Successfully inserted into repo ($idString)")
         Ok(Json.toJson(Response(OK)))
       }

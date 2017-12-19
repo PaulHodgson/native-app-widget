@@ -20,19 +20,23 @@ import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import play.api.Configuration
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData, randomData}
+import uk.gov.hmrc.nativeappwidget.models._
 import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
-class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactory{
+class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactory {
 
   val mockRepo: SurveyWidgetRepository = mock[SurveyWidgetRepository]
 
-  val surveyWhitelist = Set("a", "b")
+  private val validCampaignId = "whitelisted"
+  private val validCampaignId2 = "whitelisted2"
+  private val notWhitelistedCampaignId = "not-whitelisted"
+
+  val surveyWhitelist = Set(validCampaignId, validCampaignId2)
 
   val config = ConfigFactory.parseString(
     s"""
@@ -42,7 +46,7 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
 
   val service = new SurveyWidgetDataService(mockRepo, Configuration(config))
 
-  def mockRepoInsert(data: SurveyData, internalAuthId: String)(result: Either[String,DataPersisted]) =
+  def mockRepoInsert(data: SurveyData, internalAuthId: String)(result: Either[String, DataPersisted]) =
     (mockRepo.persistData(_: SurveyData, _: String))
       .expects(data, internalAuthId)
       .returning(Future.successful(result))
@@ -50,37 +54,62 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
   def await[T](f: Future[T]): T = Await.result(f, 5.seconds)
 
 
-  "The SurveyWidgetDataService" when {
+  private def data(campaignId: String): SurveyData =
+    randomData().copy(campaignId = campaignId)
 
-    "add widget surveyData" must {
-      def data(campaignId: String): SurveyData =
-        randomData().copy(campaignId = campaignId)
+  "addWidgetData" should {
 
-      "return Unauthorised if the campaing ID in the surveyData is not in " +
-        "the configured whitelist" in {
-        await(service.addWidgetData(data("x"), "some-internal-auth-id")) shouldBe Left(Unauthorised)
-      }
+    "return Unauthorised if the campaign ID in the surveyData is not in " +
+    "the configured whitelist" in {
+      await(service.addWidgetData(data(notWhitelistedCampaignId), "some-internal-auth-id")) shouldBe Left(Unauthorised)
+    }
 
-      "return a RepoError if the repo returns an error" in {
-        val d = data("a")
-        val ai = "some-internal-auth-id"
-        val message = "uh oh"
-        mockRepoInsert(d, ai)(Left(message))
+    "return a RepoError if the repo returns an error" in {
+      val d = data(validCampaignId)
+      val ai = "some-internal-auth-id"
+      val message = "uh oh"
+      mockRepoInsert(d, ai)(Left(message))
 
-        await(service.addWidgetData(d, ai)) shouldBe Left(RepoError(message))
-      }
+      await(service.addWidgetData(d, ai)) shouldBe Left(RepoError(message))
+    }
 
-      "return DataPersisted if the repo returns successfully" in {
-        val d = data("a")
-        val ai = "some-internal-auth-id"
-        mockRepoInsert(d, ai)(Right(DataPersisted()))
+    "return DataPersisted if the repo returns successfully" in {
+      val d = data(validCampaignId)
+      val ai = "some-internal-auth-id"
+      mockRepoInsert(d, ai)(Right(DataPersisted()))
 
-        await(service.addWidgetData(d, ai)) shouldBe Right(DataPersisted())
-
-      }
+      await(service.addWidgetData(d, ai)) shouldBe Right(DataPersisted())
 
     }
 
   }
 
+  "getWidgetData" should {
+
+    "return a Seq of Content if the repo returns successfully and finds a matching answer" in {
+      val internalAuthId = "some-internal-auth-id"
+      val surveyDataForCampaignAndAuthId: List[SurveyData] = List(
+        SurveyData(validCampaignId, List(
+          KeyValuePair("question_1", randomContent()),
+          KeyValuePair("question_2", Content("Yes", Some("String"), Some("Question text")))
+      )))
+
+      pending
+
+      (mockRepo.find(_: String, _: String))
+        .expects(validCampaignId, internalAuthId)
+        .returning(Future.successful(Right(surveyDataForCampaignAndAuthId)))
+
+      await(service.getWidgetData(validCampaignId, internalAuthId, "question_2"))
+
+    }
+
+    "return Unauthorised if the campaign ID in the surveyData is not in " +
+    "the configured whitelist" in {
+      await(service.getWidgetData("other-campaign-id", "some-internal-auth-id", "question_1")) shouldBe Left(Unauthorised)
+    }
+
+    "return a RepoError if the repo returns an error" is pending
+
+  }
 }

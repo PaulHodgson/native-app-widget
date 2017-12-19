@@ -40,6 +40,8 @@ trait SurveyWidgetRepository {
     */
   def persistData(data: SurveyData, internalAuthId: String): Future[Either[String,DataPersisted]]
 
+  def find(campaignId: String, internalAuthId: String): Future[Either[String, List[SurveyData]]]
+
 }
 
 object SurveyWidgetRepository {
@@ -102,4 +104,5 @@ class SurveyWidgetMongoRepository @Inject()(mongo: ReactiveMongoComponent)(impli
     }
   }
 
+  override def find(campaignId: String, internalAuthId: String): Future[Either[String, List[SurveyData]]] = ???
 }

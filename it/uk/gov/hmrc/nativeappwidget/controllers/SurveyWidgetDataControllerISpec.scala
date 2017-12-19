@@ -65,22 +65,57 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
       val internalAuthid = s"Test-${UUID.randomUUID().toString}}"
       AuthStub.authoriseWithoutPredicatesWillReturnInternalId(internalAuthid)
       val response = await(wsUrl("/native-app-widget/CS700100A/widget-data").post(validSurveyData))
-
       response.status shouldBe 200
 
-      eventually {
-        val storedSurveyDatas: immutable.Seq[SurveyWidgetRepository.SurveyDataPersist] = await(surveyWidgetRepository.find(
-          "internalAuthid" -> internalAuthid))
-        storedSurveyDatas.size shouldBe 1
-        val storedSurveyData = storedSurveyDatas.head
-        storedSurveyData.campaignId shouldBe campaignId
-        storedSurveyData.surveyData shouldBe List(
-          KeyValuePair("question_1", Content(content = "true", contentType = Some("Boolean"), additionalInfo = Some("Would you like us to contact you?"))),
-          KeyValuePair("question_2", Content(content = "John Doe", contentType = Some("String"), additionalInfo = Some("What is your full name?")))
-        )
+      try {
+        eventually {
+          val storedSurveyDatas: immutable.Seq[SurveyWidgetRepository.SurveyDataPersist] = await(surveyWidgetRepository.find(
+            "internalAuthid" -> internalAuthid))
+          storedSurveyDatas.size shouldBe 1
+          val storedSurveyData = storedSurveyDatas.head
+          storedSurveyData.campaignId shouldBe campaignId
+          storedSurveyData.surveyData shouldBe List(
+            KeyValuePair("question_1", Content(content = "true", contentType = Some("Boolean"), additionalInfo = Some("Would you like us to contact you?"))),
+            KeyValuePair("question_2", Content(content = "John Doe", contentType = Some("String"), additionalInfo = Some("What is your full name?")))
+          )
+        }
       }
-
-      surveyWidgetRepository.remove("internalAuthid" -> internalAuthid)
+      finally {
+        surveyWidgetRepository.remove("internalAuthid" -> internalAuthid)
+      }
     }
+  }
+
+  "GET /native-app-widget/widget-data/:campaignId/:key" should {
+    "retrieve the answer that was stored for a question" in {
+      val internalAuthid = s"Test-${UUID.randomUUID().toString}}"
+      AuthStub.authoriseWithoutPredicatesWillReturnInternalId(internalAuthid)
+      val postSurveyDataResponse = await(wsUrl("/native-app-widget/CS700100A/widget-data").post(validSurveyData))
+      postSurveyDataResponse.status shouldBe 200
+
+      try {
+        eventually {
+          val getQuestion1Response = await(wsUrl(s"/native-app-widget/$campaignId/widget-data/question_1").get())
+          getQuestion1Response.status shouldBe 200
+
+          getQuestion1Response.json \ "content" shouldBe "true"
+          getQuestion1Response.json \ "contentType" shouldBe "Boolean"
+          getQuestion1Response.json \ "additionalInfo" shouldBe "Would you like us to contact you?"
+
+          val getQuestion2Response = await(wsUrl(s"/native-app-widget/$campaignId/widget-data/question_1").get())
+          getQuestion2Response.status shouldBe 200
+
+          getQuestion2Response.json \ "content" shouldBe "John Doe"
+          getQuestion2Response.json \ "contentType" shouldBe "String"
+          getQuestion2Response.json \ "additionalInfo" shouldBe "What is your full name?"
+        }
+      }
+      finally {
+        surveyWidgetRepository.remove("internalAuthid" -> internalAuthid)
+      }
+    }
+
+    "return 404 for a non-existent campaign" is pending
+    "return 404 for a non-existent question" is pending
   }
 }

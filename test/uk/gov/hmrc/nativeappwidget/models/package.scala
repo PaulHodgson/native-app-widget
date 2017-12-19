@@ -40,6 +40,8 @@ package object models {
       data ← Gen.listOf(keyValueGen)
     } yield SurveyData(campaignId, data)
 
-  def randomData(): SurveyData = dataGen.sample.getOrElse(sys.error("Could not generate surveyData"))
+  def randomContent(): Content = contentGen.sample.getOrElse(sys.error("Could not generate Content"))
+
+  def randomData(): SurveyData = dataGen.sample.getOrElse(sys.error("Could not generate SurveyData"))
 
 }

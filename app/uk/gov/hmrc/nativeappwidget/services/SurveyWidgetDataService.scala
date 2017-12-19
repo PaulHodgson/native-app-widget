@@ -19,7 +19,7 @@ package uk.gov.hmrc.nativeappwidget.services
 import cats.syntax.either._
 import com.google.inject.{ImplementedBy, Inject, Singleton}
 import play.api.Configuration
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyResponse}
 import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
@@ -30,7 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @ImplementedBy(classOf[SurveyWidgetDataService])
 trait SurveyWidgetDataServiceAPI {
 
-  def addWidgetData(data: SurveyData,
+  def addWidgetData(data: SurveyResponse,
                     internalAuthId: String
                    ): Future[Either[SurveyWidgetError, DataPersisted]]
 
@@ -54,9 +54,9 @@ class SurveyWidgetDataService @Inject()(repo: SurveyWidgetRepository,
   val whitelistedSurveys: Set[String] =
     configuration.underlying.getStringList("widget.surveys").asScala.toSet
 
-  def addWidgetData(data: SurveyData, internalAuthId: String): Future[Either[SurveyWidgetError, DataPersisted]] =
+  def addWidgetData(data: SurveyResponse, internalAuthId: String): Future[Either[SurveyWidgetError, DataPersisted]] =
     if(whitelistedSurveys.contains(data.campaignId)) {
-      repo.persistData(data, internalAuthId).map(_.leftMap(RepoError))
+      repo.persist(data, internalAuthId).map(_.leftMap(RepoError))
     } else {
       Future.successful(Left(Unauthorised))
     }

@@ -26,7 +26,7 @@ class SurveyDataSpec extends WordSpec with Matchers {
 
     "have a JSON format instance" in {
       val data = randomData()
-      Json.fromJson[SurveyData](Json.toJson(data)) shouldBe JsSuccess(data)
+      Json.fromJson[SurveyResponse](Json.toJson(data)) shouldBe JsSuccess(data)
     }
 
   }

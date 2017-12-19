@@ -34,12 +34,12 @@ package object models {
       content ← contentGen
     } yield KeyValuePair(key, content)
 
-  def dataGen: Gen[SurveyData] =
+  def dataGen: Gen[SurveyResponse] =
     for {
       campaignId ← Gen.alphaNumStr
       data ← Gen.listOf(keyValueGen)
-    } yield SurveyData(campaignId, data)
+    } yield SurveyResponse(campaignId, data)
 
-  def randomData(): SurveyData = dataGen.sample.getOrElse(sys.error("Could not generate surveyData"))
+  def randomData(): SurveyResponse = dataGen.sample.getOrElse(sys.error("Could not generate surveyData"))
 
 }

@@ -32,7 +32,7 @@ import uk.gov.hmrc.auth.core.retrieve.{Retrieval, Retrievals}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, KeyValuePair, SurveyData, randomData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, KeyValuePair, SurveyResponse, randomData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
@@ -50,8 +50,8 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
   val mockSurveyWidgetDataServiceAPI: SurveyWidgetDataServiceAPI = mock[SurveyWidgetDataServiceAPI]
   val mockAuthConnector = mock[AuthConnector]
 
-  def mockInsert(expectedData: SurveyData, internalAuthId: String)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
-    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData, _: String))
+  def mockInsert(expectedData: SurveyResponse, internalAuthId: String)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
+    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyResponse, _: String))
       .expects(expectedData, internalAuthId)
       .returning(Future.successful(result))
 
@@ -70,7 +70,7 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       def doInsert(request: Request[AnyContent]): Future[Result] =
         controller.addWidgetData(Nino("CS700100A"))(request)
 
-      val data: SurveyData = randomData().copy(campaignId = "a")
+      val data: SurveyResponse = randomData().copy(campaignId = "a")
 
       "insert the surveyData from the body of the request into the repo" in {
         inSequence {

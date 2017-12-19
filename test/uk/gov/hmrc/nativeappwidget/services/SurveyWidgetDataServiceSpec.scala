@@ -46,15 +46,15 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
 
   val service = new SurveyWidgetDataService(mockRepo, Configuration(config))
 
-  def mockRepoInsert(data: SurveyData, internalAuthId: String)(result: Either[String, DataPersisted]) =
-    (mockRepo.persistData(_: SurveyData, _: String))
+  def mockRepoInsert(data: SurveyResponse, internalAuthId: String)(result: Either[String, DataPersisted]) =
+    (mockRepo.persist(_: SurveyResponse, _: String))
       .expects(data, internalAuthId)
       .returning(Future.successful(result))
 
   def await[T](f: Future[T]): T = Await.result(f, 5.seconds)
 
 
-  private def data(campaignId: String): SurveyData =
+  private def data(campaignId: String): SurveyResponse =
     randomData().copy(campaignId = campaignId)
 
   "addWidgetData" should {

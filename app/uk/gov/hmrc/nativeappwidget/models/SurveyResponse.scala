@@ -21,12 +21,11 @@ import play.api.libs.json.{Format, Json}
 /**
   * Represents surveyData we are posted in the service request
   *
-  * @param campaignId - an ID which associates the surveyData to a particular party
-  * @param surveyData - the actual surveyData
+  * @param campaignId an ID which associates the surveyData to a particular survey
+  * @param surveyData the questions and answers
   */
-case class SurveyData(campaignId: String,
-                      surveyData : List[KeyValuePair]) {
-}
+case class SurveyResponse(campaignId: String,
+                          surveyData: List[KeyValuePair])
 
 case class KeyValuePair(key: String, value: Content)
 
@@ -40,8 +39,8 @@ object KeyValuePair {
   implicit val keyValuePairFormat: Format[KeyValuePair] = Json.format[KeyValuePair]
 }
 
-object SurveyData {
-  implicit val dataFormat: Format[SurveyData] = Json.format[SurveyData]
+object SurveyResponse {
+  implicit val dataFormat: Format[SurveyResponse] = Json.format[SurveyResponse]
 }
 
 

@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.nativeappwidget.models
 
-import org.joda.time.DateTime
 import play.api.libs.json.{Format, Json}
 
 /**

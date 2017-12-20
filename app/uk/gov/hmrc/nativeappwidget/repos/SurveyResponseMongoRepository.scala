@@ -52,7 +52,7 @@ object SurveyWidgetRepository {
     * @param surveyData the questions and answers
     */
   case class SurveyResponsePersist(campaignId: String,
-                                   internalAuthid: String,
+                                   internalAuthid: String, // TODO NGC-2630 internalAuthId (capitalisation)
                                    surveyData: List[KeyValuePair],
                                    created: DateTime) {
 

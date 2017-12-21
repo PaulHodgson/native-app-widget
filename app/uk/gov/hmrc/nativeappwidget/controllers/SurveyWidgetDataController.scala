@@ -22,8 +22,6 @@ import play.api.Logger
 import play.api.data.validation.ValidationError
 import play.api.libs.json.{JsPath, Json}
 import play.api.mvc._
-import uk.gov.hmrc.auth.core.retrieve.Retrievals._
-import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyResponse}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
@@ -34,31 +32,26 @@ import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class SurveyWidgetDataController @Inject()(service: SurveyWidgetDataServiceAPI,
-                                           override val authConnector: AuthConnector)
-                                          (implicit ec: ExecutionContext) extends BaseController with AuthorisedFunctions {
+class SurveyWidgetDataController @Inject()(
+  service: SurveyWidgetDataServiceAPI,
+  retrieveInternalAuthId: RetrieveInternalAuthId)
+  (implicit ec: ExecutionContext) extends BaseController {
 
   val logger = Logger(this.getClass)
 
   def deprecatedAddWidgetData(ignored: Nino): Action[AnyContent] = addWidgetData()
 
-  def addWidgetData(): Action[AnyContent] = Action.async { implicit request ⇒
-    authorised().retrieve(internalId) {
-      case None =>
-        logger.error(s"Internal auth id not found")
-        Future.successful(BadRequest("Internal id not found"))
-      case Some(id) =>
-        parseSurveyData(request).fold(
-          { e ⇒
-            logger.error(s"Could not parse survey surveyData in request: $e")
-            Future.successful(BadRequest(e))
-          }, { data ⇒
-            service.addWidgetData(data, id).map { r ⇒
-              handleSurveyWidgetResult(r, data, id)
-            }
-          }
-        )
-    }
+  def addWidgetData(): Action[AnyContent] = retrieveInternalAuthId.async { implicit request ⇒
+    parseSurveyData(request).fold(
+      { e ⇒
+        logger.error(s"Could not parse survey surveyData in request: $e")
+        Future.successful(BadRequest(e))
+      }, { data ⇒
+        service.addWidgetData(data, request.internalAuthId).map { r ⇒
+          handleSurveyWidgetResult(r, data, request.internalAuthId)
+        }
+      }
+    )
   }
 
   private def parseSurveyData(request: Request[AnyContent]): Either[String, SurveyResponse] =

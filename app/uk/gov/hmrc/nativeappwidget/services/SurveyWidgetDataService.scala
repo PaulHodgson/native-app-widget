@@ -19,7 +19,7 @@ package uk.gov.hmrc.nativeappwidget.services
 import cats.syntax.either._
 import com.google.inject.{ImplementedBy, Inject, Singleton}
 import play.api.Configuration
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyResponse}
+import uk.gov.hmrc.nativeappwidget.models.{Content, DataPersisted, SurveyResponse}
 import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
@@ -59,6 +59,14 @@ class SurveyWidgetDataService @Inject()(repo: SurveyWidgetRepository,
       repo.persist(data, internalAuthId).map(_.leftMap(RepoError))
     } else {
       Future.successful(Left(Unauthorised))
+    }
+
+  def getWidgetData(campaignId: String, internalAuthId: String, key: String): Future[Either[SurveyWidgetError, Seq[Content]]] =
+    repo.find(campaignId, internalAuthId).map { responsesOrError: Either[String, List[SurveyResponse]] =>
+      val errorF: String => Either[SurveyWidgetError, Seq[Content]] = { message => Left(RepoError(message)) }
+      val okF: List[SurveyResponse] => Either[SurveyWidgetError, Seq[Content]] = { _ => Right(Seq[Content]()) }
+      responsesOrError
+        .fold(errorF, okF)
     }
 
 }

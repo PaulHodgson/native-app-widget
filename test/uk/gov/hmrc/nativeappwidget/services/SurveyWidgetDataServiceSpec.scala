@@ -84,4 +84,30 @@ class SurveyWidgetDataServiceSpec extends WordSpec with Matchers with MockFactor
 
   }
 
+  "getWidgetData" should {
+
+    "return a Seq of Content if the repo returns successfully and finds a matching answer" in {
+      val internalAuthId = "some-internal-auth-id"
+      val content1 = randomContent()
+      val content2 = Content("Yes", Some("String"), Some("Question text"))
+      val surveyDataForCampaignAndAuthId: List[SurveyResponse] = List(
+        SurveyResponse(validCampaignId, List(
+          KeyValuePair("question_1", content1),
+          KeyValuePair("question_2", content2)
+      )))
+
+      (mockRepo.find(_: String, _: String))
+        .expects(validCampaignId, internalAuthId)
+        .returning(Future.successful(Right(surveyDataForCampaignAndAuthId)))
+
+      await(service.getWidgetData(validCampaignId, internalAuthId, "question_2")) shouldBe Right(Seq(content1, content2))
+    }
+
+    "return Unauthorised if the campaign ID in the surveyData is not in the configured whitelist" in {
+      await(service.getWidgetData("other-campaign-id", "some-internal-auth-id", "question_1")) shouldBe Left(Unauthorised)
+    }
+
+    "return a RepoError if the repo returns an error" is pending
+
+  }
 }

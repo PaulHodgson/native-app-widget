@@ -93,4 +93,38 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
   "POST /native-app-widget/:nino/widget-data" should {
     behave like aPostSurveyResponseEndpoint("/native-app-widget/CS700100A/widget-data")
   }
+
+  "GET /native-app-widget/widget-data/:campaignId/:key" should {
+    "retrieve the answer that was stored for a question" in {
+      val internalAuthid = s"Test-${UUID.randomUUID().toString}}"
+      AuthStub.authoriseWithoutPredicatesWillReturnInternalId(internalAuthid)
+      val postSurveyDataResponse = await(wsUrl("/native-app-widget/CS700100A/widget-data").post(validSurveyData))
+      postSurveyDataResponse.status shouldBe 200
+
+      try {
+        eventually {
+          val getQuestion1Response = await(wsUrl(s"/native-app-widget/$campaignId/widget-data/question_1").get())
+          getQuestion1Response.status shouldBe 200
+
+          getQuestion1Response.json \ "content" shouldBe "true"
+          getQuestion1Response.json \ "contentType" shouldBe "Boolean"
+          getQuestion1Response.json \ "additionalInfo" shouldBe "Would you like us to contact you?"
+
+          val getQuestion2Response = await(wsUrl(s"/native-app-widget/$campaignId/widget-data/question_1").get())
+          getQuestion2Response.status shouldBe 200
+
+          surveyResponseRepository.remove("internalAuthid" -> internalAuthid)
+          getQuestion2Response.json \ "content" shouldBe "John Doe"
+          getQuestion2Response.json \ "contentType" shouldBe "String"
+          getQuestion2Response.json \ "additionalInfo" shouldBe "What is your full name?"
+        }
+      }
+      finally {
+        surveyResponseRepository.remove("internalAuthid" -> internalAuthid)
+      }
+    }
+
+    "return 404 for a non-existent campaign" is pending
+    "return 404 for a non-existent question" is pending
+  }
 }

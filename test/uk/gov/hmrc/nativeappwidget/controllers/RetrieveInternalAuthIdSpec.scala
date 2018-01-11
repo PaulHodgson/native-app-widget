@@ -20,9 +20,10 @@ import org.scalamock.scalatest.MockFactory
 import play.api.libs.json.JsString
 import play.api.mvc.Results
 import play.api.test.FakeRequest
-import uk.gov.hmrc.auth.core.authorise.{EmptyPredicate, Predicate}
+import uk.gov.hmrc.auth.core.AuthProvider.{GovernmentGateway, Verify}
+import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.{Retrieval, Retrievals}
-import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisationException, NoActiveSession}
+import uk.gov.hmrc.auth.core.{AuthConnector, AuthProviders, AuthorisationException, NoActiveSession}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.test.UnitSpec
 
@@ -43,7 +44,7 @@ class RetrieveInternalAuthIdSpec extends UnitSpec with MockFactory with Retrieva
       await(action(FakeRequest())) shouldBe Ok(JsString("some-internal-auth-id"))
     }
 
-    "return 400 when no internal auth ID can be retrieved" in {
+    "return 500 when no internal auth ID can be retrieved" in {
       val authConnectorStub = authConnectorStubThatWillReturn(Future successful None)
 
       val authorised = new RetrieveInternalAuthIdImpl(authConnectorStub)
@@ -52,7 +53,7 @@ class RetrieveInternalAuthIdSpec extends UnitSpec with MockFactory with Retrieva
         Ok(JsString(request.internalAuthId))
       }
 
-      status(action(FakeRequest())) shouldBe 400
+      status(action(FakeRequest())) shouldBe 500
     }
 
     "return 401 when AuthConnector throws NoActiveSession" in {
@@ -83,7 +84,7 @@ class RetrieveInternalAuthIdSpec extends UnitSpec with MockFactory with Retrieva
   private def authConnectorStubThatWillReturn(futureInternalAuthId: Future[Option[String]]): AuthConnector = {
     val authConnectorStub = stub[AuthConnector]
     (authConnectorStub.authorise[Option[String]](_: Predicate, _: Retrieval[Option[String]])(_: HeaderCarrier, _: ExecutionContext))
-      .when(EmptyPredicate, internalId, *, *)
+      .when(AuthProviders(GovernmentGateway, Verify), internalId, *, *)
       .returns(futureInternalAuthId)
     authConnectorStub
   }

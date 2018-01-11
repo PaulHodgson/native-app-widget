@@ -21,9 +21,9 @@ import javax.inject.{Inject, Singleton}
 import com.google.inject.ImplementedBy
 import play.api.Logger
 import play.api.mvc._
-import uk.gov.hmrc.auth.core.authorise.EmptyPredicate
+import uk.gov.hmrc.auth.core.AuthProvider.{GovernmentGateway, Verify}
 import uk.gov.hmrc.auth.core.retrieve.Retrievals.internalId
-import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisationException, NoActiveSession}
+import uk.gov.hmrc.auth.core.{AuthConnector, AuthProviders, AuthorisationException, NoActiveSession}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.HeaderCarrierConverter
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
@@ -39,12 +39,16 @@ trait RetrieveInternalAuthId extends ActionBuilder[InternalAuthIdRequest] with A
 class RetrieveInternalAuthIdImpl @Inject() (authConnector: AuthConnector) extends RetrieveInternalAuthId with Results {
   override protected def refine[A](request: Request[A]): Future[Either[Result, InternalAuthIdRequest[A]]] = {
     implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromHeadersAndSession(request.headers)
-    authConnector.authorise(EmptyPredicate, internalId).map {
+    authConnector.authorise(AuthProviders(GovernmentGateway, Verify), internalId).map {
       case Some(internalAuthId) =>
         Right(new InternalAuthIdRequest(internalAuthId, request))
       case None =>
+        // <confluence>/display/PE/Retrievals+Reference#RetrievalsReference-internalId states
+        // "always defined for Government Gateway and Verify auth providers"
+        // and we have specified AuthProviders(GovernmentGateway, Verify) so internalId
+        // should always be defined.
         Logger.error("Internal auth id not found")
-        Left(BadRequest("Internal id not found"))
+        Left(InternalServerError("Internal id not found"))
     }.recover {
       case _: NoActiveSession => Left(Unauthorized)
       case _: AuthorisationException => Left(Forbidden)

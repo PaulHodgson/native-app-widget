@@ -62,7 +62,7 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
   private def aPostSurveyResponseEndpoint(url: String): Unit = {
     "store survey data in mongo against the user's internal auth ID" in {
       val internalAuthid = s"Test-${UUID.randomUUID().toString}}"
-      AuthStub.authoriseWithoutPredicatesWillReturnInternalId(internalAuthid)
+      AuthStub.userIsLoggedInWithInternalId(internalAuthid)
       val response = await(wsUrl(url).post(validSurveyData))
       response.status shouldBe 200
 
@@ -82,6 +82,18 @@ class SurveyWidgetDataControllerISpec extends BaseISpec with Eventually {
       finally {
         surveyResponseRepository.remove("internalAuthid" -> internalAuthid)
       }
+    }
+
+    "return 401 when the user is not logged in" in {
+      AuthStub.userIsNotLoggedIn()
+      val response = await(wsUrl(url).post(validSurveyData))
+      response.status shouldBe 401
+    }
+
+    "return 403 when the user is logged in with an auth provider that does not provide an internalId" in {
+      AuthStub.userIsLoggedInButNotWithGovernmentGatewayOrVerify()
+      val response = await(wsUrl(url).post(validSurveyData))
+      response.status shouldBe 403
     }
   }
 

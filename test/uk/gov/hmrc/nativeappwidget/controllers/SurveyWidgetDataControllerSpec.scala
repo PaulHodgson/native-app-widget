@@ -46,7 +46,7 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
     override protected def refine[A](request: Request[A]): Future[Either[Result, InternalAuthIdRequest[A]]] =
       Future successful internalAuthIdToReturn
         .map(id => Right(new InternalAuthIdRequest(id, request)))
-        .getOrElse(Left(BadRequest("Internal id not found")))
+        .getOrElse(Left(InternalServerError("Internal id not found")))
   }
 
   def mockInsert(expectedData: SurveyResponse, internalAuthId: String)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
@@ -85,7 +85,7 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
         userIsNotLoggedIn()
         val result = controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data)))
 
-        status(result) shouldBe BAD_REQUEST
+        status(result) shouldBe INTERNAL_SERVER_ERROR
       }
 
       "return an OK 200 if the insert was successful" in {

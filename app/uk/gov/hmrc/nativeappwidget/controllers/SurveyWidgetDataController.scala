@@ -18,7 +18,7 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import cats.syntax.either._
 import com.google.inject.{Inject, Singleton}
-import play.api.Logger
+import play.api.LoggerLike
 import play.api.data.validation.ValidationError
 import play.api.libs.json.{JsPath, Json}
 import play.api.mvc._
@@ -26,25 +26,23 @@ import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyResponse}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
-import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class SurveyWidgetDataController @Inject()(
+  logger: LoggerLike,
   service: SurveyWidgetDataServiceAPI,
   authorisedWithInternalAuthId: AuthorisedWithInternalAuthId)
   (implicit ec: ExecutionContext) extends BaseController {
-
-  val logger = Logger(this.getClass)
 
   def deprecatedAddWidgetData(ignored: Nino): Action[AnyContent] = addWidgetData()
 
   def addWidgetData(): Action[AnyContent] = authorisedWithInternalAuthId.async { implicit request ⇒
     parseSurveyData(request).fold(
       { e ⇒
-        logger.error(s"Could not parse survey surveyData in request: $e")
+        logger.warn(s"Could not parse survey surveyData in request: $e")
         Future.successful(BadRequest(e))
       }, { data ⇒
         service.addWidgetData(data, request.internalAuthId).map { r ⇒
@@ -60,7 +58,7 @@ class SurveyWidgetDataController @Inject()(
     ){
       _.validate[SurveyResponse].asEither.leftMap(
         { e ⇒
-          logger.error(s"Could not parse JSON in request: ${prettyPrint(e)}")
+          logger.warn(s"Could not parse JSON in request: ${prettyPrint(e)}")
           "Invalid JSON in body"
         })
     }
@@ -70,11 +68,11 @@ class SurveyWidgetDataController @Inject()(
     val idString = s"campaignId: '${data.campaignId}', internalAuthId: '$internalAuthId'"
     result.fold(
       {
-        case Unauthorised ⇒
+        case SurveyWidgetError.Forbidden ⇒
           logger.warn(s"Received request to insert survey surveyData but the campaign ID wasn't whitelisted: $idString")
-          Unauthorized(Json.toJson(Response(UNAUTHORIZED)))
-        case RepoError(message) ⇒
-          logger.error(s"Could not insert into repo ($idString): $message")
+          Forbidden(Json.toJson(Response(FORBIDDEN)))
+        case SurveyWidgetError.RepoError(message) ⇒
+          logger.warn(s"Could not insert into repo ($idString): $message")
           InternalServerError(Json.toJson(Response(INTERNAL_SERVER_ERROR)))
       }, { _ ⇒
         logger.debug(s"Successfully inserted into repo ($idString)")
@@ -86,6 +84,21 @@ class SurveyWidgetDataController @Inject()(
   private def prettyPrint(jsErrors: Seq[(JsPath, Seq[ValidationError])]): String = jsErrors.map { case (jsPath, validationErrors) ⇒
     jsPath.toString + ": [" + validationErrors.map(_.message).mkString(",") + "]"
   }.mkString("; ")
+
+  def getAnswers(campaignId: String, questionKey: String): Action[AnyContent] = authorisedWithInternalAuthId.async { implicit request =>
+    service.getAnswers(campaignId, request.internalAuthId, questionKey).map {
+      _.fold({
+        case SurveyWidgetError.Forbidden =>
+          Forbidden
+        case SurveyWidgetError.RepoError(message) =>
+          val idString = s"campaignId: '$campaignId', internalAuthId: '${request.internalAuthId}', questionKey: '$questionKey'"
+          logger.warn(s"Could not read from repo ($idString): $message")
+          InternalServerError
+      }, { answers =>
+        Ok(Json.toJson(answers))
+      })
+    }
+  }
 
 }
 

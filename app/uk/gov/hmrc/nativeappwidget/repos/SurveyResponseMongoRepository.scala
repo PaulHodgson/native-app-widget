@@ -18,7 +18,7 @@ package uk.gov.hmrc.nativeappwidget.repos
 
 import com.google.inject.{ImplementedBy, Inject, Singleton}
 import org.joda.time.{DateTime, DateTimeZone}
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.{Format, JsString, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.BSONObjectID
@@ -28,6 +28,7 @@ import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, KeyValuePair, SurveyRe
 import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository.SurveyResponsePersist
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 @ImplementedBy(classOf[SurveyResponseMongoRepository])
 trait SurveyWidgetRepository {
@@ -39,6 +40,8 @@ trait SurveyWidgetRepository {
     * @param data The SurveyResponse to insert
     */
   def persist(data: SurveyResponse, internalAuthId: String): Future[Either[String,DataPersisted]]
+
+  def findByCampaignAndAuthid(campaignId: String, internalAuthId: String): Future[Either[String, List[SurveyResponse]]]
 
 }
 
@@ -52,11 +55,14 @@ object SurveyWidgetRepository {
     * @param surveyData the questions and answers
     */
   case class SurveyResponsePersist(campaignId: String,
-                                   internalAuthid: String,
+                                   internalAuthid: String, // note the lowercase "i" in "Authid" - would be nice to change this to "internalAuthId" but to do so we need to ensure compatibility with existing Mongo data.
                                    surveyData: List[KeyValuePair],
                                    created: DateTime) {
 
-    /** A string suitable for identifying the surveyData in logs */
+    /**
+      * A string suitable for identifying the surveyData in logs.
+      * Note however that this does not uniquely identify a SurveyResponsePersist because the same user can respond to the same survey multiple times.
+      */
     val idString: String = s"campaignId: '$campaignId', internalAuthId: '$internalAuthid'"
   }
 
@@ -96,10 +102,29 @@ class SurveyResponseMongoRepository @Inject()(mongo: ReactiveMongoComponent)(imp
     insert(dataToPersist).map[Either[String, DataPersisted]] { _ ⇒
       logger.info(s"Successfully wrote to surveyData store (${dataToPersist.idString})")
       Right(DataPersisted())
-    }.recover{ case e ⇒
-      logger.error(s"Could not write to surveyData store (${dataToPersist.idString})", e)
-      Left(s"Failed to write to surveyData store: ${e.getMessage}")
+    }.recover {
+      case NonFatal(e) ⇒
+        logger.warn(s"Could not write to surveyData store (${dataToPersist.idString})", e)
+        Left(s"Failed to write to surveyData store: ${e.getMessage}")
     }
   }
 
+  override def findByCampaignAndAuthid(campaignId: String, internalAuthId: String): Future[Either[String, List[SurveyResponse]]] = {
+    find(
+      "internalAuthid" -> JsString(internalAuthId),
+      "campaignId" -> JsString(campaignId)
+    ).map { surveyResponsePersists =>
+      Right(surveyResponsePersists.map(toSurveyResponse))
+    }.recover {
+      case NonFatal(e) ⇒
+        val idString: String = s"campaignId: '$campaignId', internalAuthId: '$internalAuthId'"
+        logger.warn(s"Could not read from surveyData store ($idString)", e)
+        Left(s"Failed to read from surveyData store: ${e.getMessage}")
+    }
+  }
+
+  private def toSurveyResponse(persist: SurveyResponsePersist) = SurveyResponse(
+    campaignId = persist.campaignId,
+    surveyData = persist.surveyData
+  )
 }

@@ -19,10 +19,10 @@ package uk.gov.hmrc.nativeappwidget.services
 import cats.syntax.either._
 import com.google.inject.{ImplementedBy, Inject, Singleton}
 import play.api.Configuration
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyResponse}
+import uk.gov.hmrc.nativeappwidget.models.{Content, DataPersisted, SurveyResponse}
 import uk.gov.hmrc.nativeappwidget.repos.SurveyWidgetRepository
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
-import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
+import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{Forbidden, RepoError}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,6 +34,8 @@ trait SurveyWidgetDataServiceAPI {
                     internalAuthId: String
                    ): Future[Either[SurveyWidgetError, DataPersisted]]
 
+  def getAnswers(campaignId: String, internalAuthId: String, questionKey: String): Future[Either[SurveyWidgetError, Seq[Content]]]
+
 }
 
 object SurveyWidgetDataServiceAPI {
@@ -41,7 +43,7 @@ object SurveyWidgetDataServiceAPI {
   sealed trait SurveyWidgetError
 
   object SurveyWidgetError {
-    case object Unauthorised extends SurveyWidgetError
+    case object Forbidden extends SurveyWidgetError
     case class RepoError(message: String) extends SurveyWidgetError
   }
 
@@ -55,10 +57,25 @@ class SurveyWidgetDataService @Inject()(repo: SurveyWidgetRepository,
     configuration.underlying.getStringList("widget.surveys").asScala.toSet
 
   def addWidgetData(data: SurveyResponse, internalAuthId: String): Future[Either[SurveyWidgetError, DataPersisted]] =
-    if(whitelistedSurveys.contains(data.campaignId)) {
+    whitelistedSurveysOnly(data.campaignId) {
       repo.persist(data, internalAuthId).map(_.leftMap(RepoError))
+    }
+
+  def getAnswers(campaignId: String, internalAuthId: String, questionKey: String): Future[Either[SurveyWidgetError, Seq[Content]]] =
+    whitelistedSurveysOnly(campaignId) {
+      repo.findByCampaignAndAuthid(campaignId, internalAuthId).map {
+        case Right(responses) =>
+          Right(responses.flatMap(_.surveyData).filter(_.key == questionKey).map(_.value))
+        case Left(message) =>
+          Left(RepoError(message))
+      }
+    }
+
+  private def whitelistedSurveysOnly[R](campaignId: String)(body: => Future[Either[SurveyWidgetError, R]]) =
+    if(whitelistedSurveys.contains(campaignId)) {
+      body
     } else {
-      Future.successful(Left(Unauthorised))
+      Future.successful(Left(Forbidden))
     }
 
 }

@@ -47,7 +47,7 @@ class AuthorisedWithInternalAuthIdImpl @Inject() (authConnector: AuthConnector) 
         // "always defined for Government Gateway and Verify auth providers"
         // and we have specified AuthProviders(GovernmentGateway, Verify) so internalId
         // should always be defined.
-        Logger.error("Internal auth id not found")
+        Logger.warn("Internal auth id not found")
         Left(InternalServerError("Internal id not found"))
     }.recover {
       case _: NoActiveSession => Left(Unauthorized)

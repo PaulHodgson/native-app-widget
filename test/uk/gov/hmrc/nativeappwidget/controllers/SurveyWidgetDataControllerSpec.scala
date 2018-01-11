@@ -19,15 +19,11 @@ package uk.gov.hmrc.nativeappwidget.controllers
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import play.api.libs.json.{Format, Json}
 import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import uk.gov.hmrc.auth.core._
-import uk.gov.hmrc.auth.core.authorise.{EmptyPredicate, Predicate}
-import uk.gov.hmrc.auth.core.retrieve.{Retrieval, Retrievals}
-import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyResponse, randomData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
@@ -35,39 +31,22 @@ import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWid
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFactory with BeforeAndAfterEach with GeneratorDrivenPropertyChecks {
 
   val internalAuthId = "some-internal-auth-id"
   val mockSurveyWidgetDataServiceAPI: SurveyWidgetDataServiceAPI = mock[SurveyWidgetDataServiceAPI]
-  var internalAuthIdToReturn: Option[String] = None
-  val fakeRetrieveInternalAuthId = new RetrieveInternalAuthId with Results {
+
+  private class AlwaysAuthorisedWithInternalAuthId(id: String) extends AuthorisedWithInternalAuthId {
     override protected def refine[A](request: Request[A]): Future[Either[Result, InternalAuthIdRequest[A]]] =
-      Future successful internalAuthIdToReturn
-        .map(id => Right(new InternalAuthIdRequest(id, request)))
-        .getOrElse(Left(InternalServerError("Internal id not found")))
+      Future successful Right(new InternalAuthIdRequest(id, request))
   }
 
-  def mockInsert(expectedData: SurveyResponse, internalAuthId: String)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
-    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyResponse, _: String))
-      .expects(expectedData, internalAuthId)
-      .returning(Future.successful(result))
-
-  def userIsLoggedInWithAuthId(internalAuthId: String): Unit = {
-    internalAuthIdToReturn = Some(internalAuthId)
+  private object NeverAuthorisedWithInternalAuthId extends AuthorisedWithInternalAuthId with Results {
+    override protected def refine[A](request: Request[A]): Future[Either[Result, InternalAuthIdRequest[A]]] =
+      Future successful Left(Forbidden)
   }
-
-  def userIsNotLoggedIn(): Unit = {
-    internalAuthIdToReturn = None
-  }
-
-
-  override protected def beforeEach(): Unit = {
-    internalAuthIdToReturn = None
-  }
-
-  val controller: SurveyWidgetDataController = new SurveyWidgetDataController(mockSurveyWidgetDataServiceAPI, fakeRetrieveInternalAuthId)
 
   "The controller" when {
 
@@ -75,29 +54,37 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
 
       val data: SurveyResponse = randomData().copy(campaignId = "a")
 
+      def addWidgetDataWillReturn(result: Either[SurveyWidgetError, DataPersisted]): Unit =
+        mockSurveyWidgetDataServiceAPI.addWidgetData _ expects(data, internalAuthId) returning Future.successful(result)
+
       "insert the surveyData from the body of the request into the repo" in {
-        userIsLoggedInWithAuthId(internalAuthId)
-        mockInsert(data, internalAuthId)(Left(RepoError("Uh oh!")))
+        val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+          mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+        addWidgetDataWillReturn(Left(RepoError("Uh oh!")))
+
         await(controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data))))
       }
 
-      "handles no internalAuthId" in {
-        userIsNotLoggedIn()
+      "check permissions using AuthorisedWithInternalAuthId" in {
+        val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+          mockSurveyWidgetDataServiceAPI, NeverAuthorisedWithInternalAuthId)
         val result = controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data)))
 
-        status(result) shouldBe INTERNAL_SERVER_ERROR
+        status(result) shouldBe FORBIDDEN
       }
 
       "return an OK 200 if the insert was successful" in {
-        userIsLoggedInWithAuthId(internalAuthId)
-        mockInsert(data, internalAuthId)(Right(DataPersisted()))
+        val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+          mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+        addWidgetDataWillReturn(Right(DataPersisted()))
         val result = controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data)))
         status(result) shouldBe OK
       }
 
       "return a BadRequest 400" when {
         "the body of the request wasn't JSON" in {
-          userIsLoggedInWithAuthId(internalAuthId)
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
 
           val result = controller.addWidgetData()(FakeRequest()
             .withBody[AnyContentAsText](AnyContentAsText("This isn't JSON"))
@@ -106,7 +93,8 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
         }
 
         "the body contained JSON in an unexpected format" in {
-          userIsLoggedInWithAuthId(internalAuthId)
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
 
           val result = controller.addWidgetData()(FakeRequest()
             .withJsonBody(Json.toJson(UnsupportedData("???"))))
@@ -117,8 +105,9 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       "return an InternalServerError 500" when {
 
         "the insert into the repo was unsuccessful" in {
-          userIsLoggedInWithAuthId(internalAuthId)
-          mockInsert(data, internalAuthId)(Left(RepoError("Oh no!")))
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+          addWidgetDataWillReturn(Left(RepoError("Oh no!")))
 
           val result = controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data)))
           status(result) shouldBe INTERNAL_SERVER_ERROR
@@ -128,18 +117,16 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       "return a Unauthorized 401" when {
 
         "the service indicates the campaign ID wasn't whitelisted" in {
-          userIsLoggedInWithAuthId(internalAuthId)
-          mockInsert(data, internalAuthId)(Left(Unauthorised))
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+          addWidgetDataWillReturn(Left(Unauthorised))
 
           val result = controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data)))
           status(result) shouldBe UNAUTHORIZED
         }
       }
-
     }
-
   }
-
 }
 
 object SurveyWidgetDataControllerSpec {

@@ -32,11 +32,11 @@ import scala.concurrent.Future
 
 class InternalAuthIdRequest[+A](val internalAuthId: String, request: Request[A]) extends WrappedRequest[A](request)
 
-@ImplementedBy(classOf[RetrieveInternalAuthIdImpl])
-trait RetrieveInternalAuthId extends ActionBuilder[InternalAuthIdRequest] with ActionRefiner[Request, InternalAuthIdRequest]
+@ImplementedBy(classOf[AuthorisedWithInternalAuthIdImpl])
+trait AuthorisedWithInternalAuthId extends ActionBuilder[InternalAuthIdRequest] with ActionRefiner[Request, InternalAuthIdRequest]
 
 @Singleton
-class RetrieveInternalAuthIdImpl @Inject() (authConnector: AuthConnector) extends RetrieveInternalAuthId with Results {
+class AuthorisedWithInternalAuthIdImpl @Inject() (authConnector: AuthConnector) extends AuthorisedWithInternalAuthId with Results {
   override protected def refine[A](request: Request[A]): Future[Either[Result, InternalAuthIdRequest[A]]] = {
     implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromHeadersAndSession(request.headers)
     authConnector.authorise(AuthProviders(GovernmentGateway, Verify), internalId).map {

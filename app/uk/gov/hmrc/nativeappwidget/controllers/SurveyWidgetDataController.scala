@@ -34,14 +34,14 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class SurveyWidgetDataController @Inject()(
   service: SurveyWidgetDataServiceAPI,
-  retrieveInternalAuthId: RetrieveInternalAuthId)
+  authorisedWithInternalAuthId: AuthorisedWithInternalAuthId)
   (implicit ec: ExecutionContext) extends BaseController {
 
   val logger = Logger(this.getClass)
 
   def deprecatedAddWidgetData(ignored: Nino): Action[AnyContent] = addWidgetData()
 
-  def addWidgetData(): Action[AnyContent] = retrieveInternalAuthId.async { implicit request ⇒
+  def addWidgetData(): Action[AnyContent] = authorisedWithInternalAuthId.async { implicit request ⇒
     parseSurveyData(request).fold(
       { e ⇒
         logger.error(s"Could not parse survey surveyData in request: $e")

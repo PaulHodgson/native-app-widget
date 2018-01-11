@@ -29,13 +29,13 @@ import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class RetrieveInternalAuthIdSpec extends UnitSpec with MockFactory with Retrievals with Results {
+class AuthorisedWithInternalAuthIdSpec extends UnitSpec with MockFactory with Retrievals with Results {
 
-  "RetrieveInternalAuthId" should {
+  "AuthorisedWithInternalAuthId" should {
     "include the internal auth ID in the request" in {
       val authConnectorStub = authConnectorStubThatWillReturn(Future successful Some("some-internal-auth-id"))
 
-      val authorised = new RetrieveInternalAuthIdImpl(authConnectorStub)
+      val authorised = new AuthorisedWithInternalAuthIdImpl(authConnectorStub)
 
       val action = authorised { request =>
         Ok(JsString(request.internalAuthId))
@@ -47,7 +47,7 @@ class RetrieveInternalAuthIdSpec extends UnitSpec with MockFactory with Retrieva
     "return 500 when no internal auth ID can be retrieved" in {
       val authConnectorStub = authConnectorStubThatWillReturn(Future successful None)
 
-      val authorised = new RetrieveInternalAuthIdImpl(authConnectorStub)
+      val authorised = new AuthorisedWithInternalAuthIdImpl(authConnectorStub)
 
       val action = authorised { request =>
         Ok(JsString(request.internalAuthId))
@@ -59,7 +59,7 @@ class RetrieveInternalAuthIdSpec extends UnitSpec with MockFactory with Retrieva
     "return 401 when AuthConnector throws NoActiveSession" in {
       val authConnectorStub = authConnectorStubThatWillReturn(Future failed new NoActiveSession("not logged in") {})
 
-      val authorised = new RetrieveInternalAuthIdImpl(authConnectorStub)
+      val authorised = new AuthorisedWithInternalAuthIdImpl(authConnectorStub)
 
       val action = authorised { request =>
         Ok(JsString(request.internalAuthId))
@@ -71,7 +71,7 @@ class RetrieveInternalAuthIdSpec extends UnitSpec with MockFactory with Retrieva
     "return 403 when AuthConnector throws any other AuthorisationException" in {
       val authConnectorStub = authConnectorStubThatWillReturn(Future failed new AuthorisationException("not authorised") {})
 
-      val authorised = new RetrieveInternalAuthIdImpl(authConnectorStub)
+      val authorised = new AuthorisedWithInternalAuthIdImpl(authConnectorStub)
 
       val action = authorised { request =>
         Ok(JsString(request.internalAuthId))

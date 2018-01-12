@@ -20,11 +20,11 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import play.api.libs.json.Json
 
 object AuthStub {
-  def authoriseWithoutPredicatesWillReturnInternalId(internalId: String): Unit =
+  def userIsLoggedInWithInternalId(internalId: String): Unit =
     stubFor(post(urlPathEqualTo("/auth/authorise"))
       .withRequestBody(equalToJson(
         """{
-          |	"authorise": [],
+          |	"authorise": [{"authProviders": ["GovernmentGateway", "Verify"]}],
           |	"retrieve": ["internalId"]
           |}""".stripMargin))
       .willReturn(aResponse()
@@ -32,4 +32,28 @@ object AuthStub {
         .withBody(
           Json.obj("internalId" -> internalId).toString
         )))
+
+  def userIsNotLoggedIn(): Unit =
+    stubFor(post(urlPathEqualTo("/auth/authorise"))
+      .withRequestBody(equalToJson(
+        """{
+          |	"authorise": [{"authProviders": ["GovernmentGateway", "Verify"]}],
+          |	"retrieve": ["internalId"]
+          |}""".stripMargin))
+      .willReturn(aResponse()
+        .withStatus(401)
+          .withHeader("WWW-Authenticate", """MDTP detail="MissingBearerToken"""")
+      ))
+
+  def userIsLoggedInButNotWithGovernmentGatewayOrVerify(): Unit =
+    stubFor(post(urlPathEqualTo("/auth/authorise"))
+      .withRequestBody(equalToJson(
+        """{
+          |	"authorise": [{"authProviders": ["GovernmentGateway", "Verify"]}],
+          |	"retrieve": ["internalId"]
+          |}""".stripMargin))
+      .willReturn(aResponse()
+        .withStatus(401)
+          .withHeader("WWW-Authenticate", """MDTP detail="UnsupportedAuthProvider"""")
+      ))
 }

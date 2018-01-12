@@ -14,6 +14,15 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.nativeappwidget.models
+package uk.gov.hmrc.nativeappwidget.config
 
-case class DataPersisted()
+import com.google.inject.AbstractModule
+import play.api.{Logger, LoggerLike}
+
+class GuiceModule extends AbstractModule {
+
+  override def configure(): Unit = {
+    bind(classOf[LoggerLike]).toInstance(Logger)
+  }
+
+}

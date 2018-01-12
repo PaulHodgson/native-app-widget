@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2018 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ class SurveyDataSpec extends WordSpec with Matchers {
 
     "have a JSON format instance" in {
       val data = randomData()
-      Json.fromJson[SurveyData](Json.toJson(data)) shouldBe JsSuccess(data)
+      Json.fromJson[SurveyResponse](Json.toJson(data)) shouldBe JsSuccess(data)
     }
 
   }

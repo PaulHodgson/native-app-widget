@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2018 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,99 +17,95 @@
 package uk.gov.hmrc.nativeappwidget.controllers
 
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
-import play.api.libs.json.{Format, JsSuccess, Json}
-import play.api.mvc.{AnyContent, AnyContentAsText, Request, Result}
+import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
+import org.slf4j.Logger
+import play.api.LoggerLike
+import play.api.libs.json.{Format, Json}
+import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import uk.gov.hmrc.auth.core._
-import uk.gov.hmrc.auth.core.authorise.{EmptyPredicate, Predicate}
-import uk.gov.hmrc.auth.core.retrieve.{Retrieval, Retrievals}
-import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataControllerSpec.UnsupportedData
-import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, KeyValuePair, SurveyData, randomData}
+import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, SurveyResponse, randomContent, randomData}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
-import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{RepoError, Unauthorised}
+import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError.{Forbidden, RepoError}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.Future
 
-class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFactory with BeforeAndAfterAll with GeneratorDrivenPropertyChecks {
-
-  implicit val system = ActorSystem("test-system")
-  implicit val materializer = ActorMaterializer()
+class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFactory with OneInstancePerTest with BeforeAndAfterEach with GeneratorDrivenPropertyChecks {
 
   val internalAuthId = "some-internal-auth-id"
   val mockSurveyWidgetDataServiceAPI: SurveyWidgetDataServiceAPI = mock[SurveyWidgetDataServiceAPI]
-  val mockAuthConnector = mock[AuthConnector]
 
-  def mockInsert(expectedData: SurveyData, internalAuthId: String)(result: Either[SurveyWidgetError,DataPersisted]): Unit =
-    (mockSurveyWidgetDataServiceAPI.addWidgetData(_: SurveyData, _: String))
-      .expects(expectedData, internalAuthId)
-      .returning(Future.successful(result))
-
-  def mockAuth(internalAuthId: Option[String]) = {
-    (mockAuthConnector.authorise(_: Predicate, _: Retrieval[Option[String]])(_: HeaderCarrier, _: ExecutionContext))
-      .expects(EmptyPredicate, Retrievals.internalId, *, *)
-      .returning(Future.successful(internalAuthId))
+  // when https://github.com/paulbutcher/ScalaMock/issues/39 is fixed we will be able to simplify this code by mocking LoggerLike directly (instead of slf4j.Logger)
+  private val slf4jLoggerStub = stub[Logger]
+  (slf4jLoggerStub.isWarnEnabled: () => Boolean).when().returning(true)
+  private val logger = new LoggerLike {
+    override val logger: Logger = slf4jLoggerStub
   }
 
-  val controller: SurveyWidgetDataController = new SurveyWidgetDataController(mockSurveyWidgetDataServiceAPI, mockAuthConnector)
+  private class AlwaysAuthorisedWithInternalAuthId(id: String) extends AuthorisedWithInternalAuthId {
+    override protected def refine[A](request: Request[A]): Future[Either[Result, InternalAuthIdRequest[A]]] =
+      Future successful Right(new InternalAuthIdRequest(id, request))
+  }
+
+  private object NeverAuthorisedWithInternalAuthId extends AuthorisedWithInternalAuthId with Results {
+    override protected def refine[A](request: Request[A]): Future[Either[Result, InternalAuthIdRequest[A]]] =
+      Future successful Left(Forbidden)
+  }
 
   "The controller" when {
 
     "handling requests to insert surveyData" must {
 
-      def doInsert(request: Request[AnyContent]): Future[Result] =
-        controller.addWidgetData(Nino("CS700100A"))(request)
+      val data: SurveyResponse = randomData().copy(campaignId = "a")
 
-      val data: SurveyData = randomData().copy(campaignId = "a")
+      def addWidgetDataWillReturn(result: Either[SurveyWidgetError, DataPersisted]): Unit =
+        mockSurveyWidgetDataServiceAPI.addWidgetData _ expects(data, internalAuthId) returning Future.successful(result)
 
       "insert the surveyData from the body of the request into the repo" in {
-        inSequence {
-          mockAuth(Some(internalAuthId))
-          mockInsert(data, internalAuthId)(Left(RepoError("Uh oh!")))
-        }
-        await(doInsert(FakeRequest().withJsonBody(Json.toJson(data))))
+        val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+          logger, mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+        addWidgetDataWillReturn(Left(RepoError("Uh oh!")))
+
+        await(controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data))))
       }
 
-      "handles no internalAuthId" in {
-        mockAuth(None)
-        val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
+      "check permissions using AuthorisedWithInternalAuthId" in {
+        val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+          logger, mockSurveyWidgetDataServiceAPI, NeverAuthorisedWithInternalAuthId)
+        val result = controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data)))
 
-        status(result) shouldBe BAD_REQUEST
+        status(result) shouldBe FORBIDDEN
       }
 
       "return an OK 200 if the insert was successful" in {
-        inSequence {
-          mockAuth(Some(internalAuthId))
-          mockInsert(data, internalAuthId)(Right(DataPersisted()))
-        }
-        val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
+        val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+          logger, mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+        addWidgetDataWillReturn(Right(DataPersisted()))
+        val result = controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data)))
         status(result) shouldBe OK
       }
 
       "return a BadRequest 400" when {
         "the body of the request wasn't JSON" in {
-          mockAuth(Some(internalAuthId))
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            logger, mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
 
-          val result = doInsert(FakeRequest()
+          val result = controller.addWidgetData()(FakeRequest()
             .withBody[AnyContentAsText](AnyContentAsText("This isn't JSON"))
           )
           status(result) shouldBe BAD_REQUEST
         }
 
         "the body contained JSON in an unexpected format" in {
-          mockAuth(Some(internalAuthId))
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            logger, mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
 
-          val result = doInsert(FakeRequest()
+          val result = controller.addWidgetData()(FakeRequest()
             .withJsonBody(Json.toJson(UnsupportedData("???"))))
           status(result) shouldBe BAD_REQUEST
         }
@@ -118,39 +114,70 @@ class SurveyWidgetDataControllerSpec extends WordSpec with Matchers with MockFac
       "return an InternalServerError 500" when {
 
         "the insert into the repo was unsuccessful" in {
-          inSequence {
-            mockAuth(Some(internalAuthId))
-            mockInsert(data, internalAuthId)(Left(RepoError("Oh no!")))
-          }
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            logger, mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+          addWidgetDataWillReturn(Left(RepoError("Oh no!")))
 
-          val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
+          val result = controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data)))
           status(result) shouldBe INTERNAL_SERVER_ERROR
         }
       }
 
-      "return a Unauthorized 401" when {
+      "return a Forbidden 403" when {
 
         "the service indicates the campaign ID wasn't whitelisted" in {
-          inSequence {
-            mockAuth(Some(internalAuthId))
-            mockInsert(data, internalAuthId)(Left(Unauthorised))
-          }
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            logger, mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+          addWidgetDataWillReturn(Left(Forbidden))
 
-          val result = doInsert(FakeRequest().withJsonBody(Json.toJson(data)))
-          status(result) shouldBe UNAUTHORIZED
+          val result = controller.addWidgetData()(FakeRequest().withJsonBody(Json.toJson(data)))
+          status(result) shouldBe FORBIDDEN
+        }
+      }
+    }
 
+    "handling requests to get survey answers" must {
+
+      "return an OK 200 containing the answers" when {
+        "the call to the service succeeded" in {
+          val answers = Seq(randomContent(), randomContent())
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            logger, mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+          mockSurveyWidgetDataServiceAPI.getAnswers _ expects("TEST_CAMPAIGN_ID", internalAuthId, "question_1") returning Future.successful(Right(answers))
+
+          val result = controller.getAnswers("TEST_CAMPAIGN_ID", "question_1")(FakeRequest())
+          status(result) shouldBe 200
+          contentAsJson(result) shouldBe Json.toJson(answers)
         }
       }
 
+      "return a Forbidden 403" when {
+        "the service indicates the campaign ID wasn't whitelisted" in {
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            logger, mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+          mockSurveyWidgetDataServiceAPI.getAnswers _ expects("TEST_CAMPAIGN_ID", internalAuthId, "question_1") returning Future.successful(Left(Forbidden))
+
+          val result = controller.getAnswers("TEST_CAMPAIGN_ID", "question_1")(FakeRequest())
+          status(result) shouldBe FORBIDDEN
+        }
+      }
+
+      "return an InternalServerError 500 and log a warning" when {
+        "the query of the repo was unsuccessful" in {
+          val controller: SurveyWidgetDataController = new SurveyWidgetDataController(
+            logger, mockSurveyWidgetDataServiceAPI, new AlwaysAuthorisedWithInternalAuthId(internalAuthId))
+
+          mockSurveyWidgetDataServiceAPI.getAnswers _ expects("TEST_CAMPAIGN_ID", internalAuthId, "question_1") returning Future.successful(Left(RepoError("Oh no!")))
+
+          val result = controller.getAnswers("TEST_CAMPAIGN_ID", "question_1")(FakeRequest())
+          status(result) shouldBe INTERNAL_SERVER_ERROR
+
+          (slf4jLoggerStub.warn(_: String)).verify(where((msg: String) =>
+            msg.contains("Oh no!") && msg.contains("TEST_CAMPAIGN_ID") && msg.contains(internalAuthId) && msg.contains("question_1")))
+        }
+      }
     }
-
   }
-
-  override def afterAll(): Unit = {
-    super.afterAll()
-    Await.result(system.terminate(), 5.seconds)
-  }
-
 }
 
 object SurveyWidgetDataControllerSpec {

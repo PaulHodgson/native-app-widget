@@ -22,7 +22,6 @@ import play.api.LoggerLike
 import play.api.data.validation.ValidationError
 import play.api.libs.json.{JsPath, Json}
 import play.api.mvc._
-import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.nativeappwidget.models.{DataPersisted, Response, SurveyResponse}
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI
 import uk.gov.hmrc.nativeappwidget.services.SurveyWidgetDataServiceAPI.SurveyWidgetError
@@ -36,8 +35,6 @@ class SurveyWidgetDataController @Inject()(
   service: SurveyWidgetDataServiceAPI,
   authorisedWithInternalAuthId: AuthorisedWithInternalAuthId)
   (implicit ec: ExecutionContext) extends BaseController {
-
-  def deprecatedAddWidgetData(ignored: Nino): Action[AnyContent] = addWidgetData()
 
   def addWidgetData(): Action[AnyContent] = authorisedWithInternalAuthId.async { implicit request ⇒
     parseSurveyData(request).fold(

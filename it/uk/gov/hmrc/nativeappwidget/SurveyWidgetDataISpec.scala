@@ -82,11 +82,11 @@ class SurveyWidgetDataISpec extends BaseISpec with Eventually {
 
   private lazy val surveyResponseRepository: SurveyResponseMongoRepository = app.injector.instanceOf[SurveyResponseMongoRepository]
 
-  private def aPostSurveyResponseEndpoint(url: String): Unit = {
+  "POST /native-app-widget/widget-data" should {
     "store survey data in mongo against the user's internal auth ID" in {
       val internalAuthId = s"Test-${UUID.randomUUID().toString}}"
       AuthStub.userIsLoggedInWithInternalId(internalAuthId)
-      val response = await(wsUrl(url).post(validSurveyResponse))
+      val response = await(wsUrl("/native-app-widget/widget-data").post(validSurveyResponse))
       response.status shouldBe 200
 
       try {
@@ -109,24 +109,15 @@ class SurveyWidgetDataISpec extends BaseISpec with Eventually {
 
     "return 401 when the user is not logged in" in {
       AuthStub.userIsNotLoggedIn()
-      val response = await(wsUrl(url).post(validSurveyResponse))
+      val response = await(wsUrl("/native-app-widget/widget-data").post(validSurveyResponse))
       response.status shouldBe 401
     }
 
     "return 403 when the user is logged in with an auth provider that does not provide an internalId" in {
       AuthStub.userIsLoggedInButNotWithGovernmentGatewayOrVerify()
-      val response = await(wsUrl(url).post(validSurveyResponse))
+      val response = await(wsUrl("/native-app-widget/widget-data").post(validSurveyResponse))
       response.status shouldBe 403
     }
-  }
-
-  "POST /native-app-widget/widget-data" should {
-    behave like aPostSurveyResponseEndpoint("/native-app-widget/widget-data")
-  }
-
-  // old, deprecated URL - to be removed once native-apps-api-orchestration has been changed to use the new URL
-  "POST /native-app-widget/:nino/widget-data" should {
-    behave like aPostSurveyResponseEndpoint("/native-app-widget/CS700100A/widget-data")
   }
 
   "GET /native-app-widget/widget-data/:campaignId/:key" should {
@@ -136,11 +127,11 @@ class SurveyWidgetDataISpec extends BaseISpec with Eventually {
 
       try {
         AuthStub.userIsLoggedInWithInternalId(internalAuthId)
-        val postSurveyResponseResponse = await(wsUrl("/native-app-widget/CS700100A/widget-data").post(validSurveyResponse))
+        val postSurveyResponseResponse = await(wsUrl("/native-app-widget/widget-data").post(validSurveyResponse))
         postSurveyResponseResponse.status shouldBe 200
 
         AuthStub.userIsLoggedInWithInternalId(someoneElsesInternalAuthId)
-        val postSurveyResponseResponse2 = await(wsUrl("/native-app-widget/CS700100A/widget-data").post(validDifferentAnswers))
+        val postSurveyResponseResponse2 = await(wsUrl("/native-app-widget/widget-data").post(validDifferentAnswers))
         postSurveyResponseResponse2.status shouldBe 200
 
         AuthStub.userIsLoggedInWithInternalId(internalAuthId)
@@ -178,7 +169,7 @@ class SurveyWidgetDataISpec extends BaseISpec with Eventually {
       val internalAuthId = s"Test-${UUID.randomUUID().toString}}"
       try {
         AuthStub.userIsLoggedInWithInternalId(internalAuthId)
-        val postSurveyResponseResponse = await(wsUrl("/native-app-widget/CS700100A/widget-data").post(validSurveyResponse))
+        val postSurveyResponseResponse = await(wsUrl("/native-app-widget/widget-data").post(validSurveyResponse))
         postSurveyResponseResponse.status shouldBe 200
 
         eventually {
@@ -198,7 +189,7 @@ class SurveyWidgetDataISpec extends BaseISpec with Eventually {
       val internalAuthId = s"Test-${UUID.randomUUID().toString}}"
       try {
         AuthStub.userIsLoggedInWithInternalId(internalAuthId)
-        val postSurveyResponseResponse = await(wsUrl("/native-app-widget/CS700100A/widget-data").post(validSurveyResponse))
+        val postSurveyResponseResponse = await(wsUrl("/native-app-widget/widget-data").post(validSurveyResponse))
         postSurveyResponseResponse.status shouldBe 200
 
         eventually {

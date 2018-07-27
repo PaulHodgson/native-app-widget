@@ -1,6 +1,2 @@
 POST    /widget-data                            uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.addWidgetData()
 GET     /widget-data/:campaignId/:questionKey   uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.getAnswers(campaignId: String, questionKey: String)
-
-# Deprecated endpoints - nino is ignored, and instead we use the internal auth ID
-# This can be removed once native-apps-api-orchestration starts using POST /widget-data instead
-POST    /:nino/widget-data                      uk.gov.hmrc.nativeappwidget.controllers.SurveyWidgetDataController.deprecatedAddWidgetData(nino: uk.gov.hmrc.domain.Nino)
